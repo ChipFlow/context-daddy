@@ -40,11 +40,14 @@ except Exception as e:
     sleep 1
 done
 
-# Show summary
+# Show summary with clash count
 if [[ -f .claude/repo-map.md ]]; then
-    CLASSES=$(grep -c "^## ⚠️ Potentially Similar Classes" .claude/repo-map.md 2>/dev/null && grep -A1000 "^## ⚠️ Potentially Similar Classes" .claude/repo-map.md | grep -c "^\*\*" || echo "0")
-    FUNCS=$(grep -c "^## ⚠️ Potentially Similar Functions" .claude/repo-map.md 2>/dev/null && grep -A1000 "^## ⚠️ Potentially Similar Functions" .claude/repo-map.md | grep -c "^\*\*" || echo "0")
+    CLASH_COUNT=$(grep -c "^- \*\*" .claude/repo-map.md 2>/dev/null | head -1 || echo "0")
     echo "Repo map saved to .claude/repo-map.md"
+    if [[ "${CLASH_COUNT}" -gt 0 ]]; then
+        echo "${CLASH_COUNT} potential naming clash(es) detected."
+        echo "Run /clash-summary for overview or /resolve-clashes to review interactively."
+    fi
 fi
 ```
 
@@ -54,3 +57,5 @@ After running, review the output for:
 - **Undocumented code**: Opportunities to improve codebase understanding
 
 Note: Cross-language similarities (e.g., Python and Rust) are not flagged as they're typically intentional (bindings, ports).
+
+If clashes are detected, use `/clash-summary` for an overview or `/resolve-clashes` to review and resolve them interactively.

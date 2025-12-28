@@ -28,10 +28,17 @@ if not repo_map.exists():
 content = repo_map.read_text()
 clashes = []
 
+# Parse clashes (multi-line format)
+# Format: - **Name1** (file1.py)\n  ↔ **Name2** (file2.py)\n  Reason: ...
+clash_pattern = re.compile(
+    r'- \*\*([^*]+)\*\* \(([^)]+)\)\n\s+↔ \*\*([^*]+)\*\* \(([^)]+)\)\n\s+Reason: ([^\n]+)',
+    re.MULTILINE
+)
+
 # Parse similar classes
-class_section = re.search(r'## ⚠️ Potentially Similar Classes\n\n.*?\n\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+class_section = re.search(r'## ⚠️ Potentially Similar Classes.*?(?=\n## |\Z)', content, re.DOTALL)
 if class_section:
-    for match in re.finditer(r'\*\*([^*]+)\*\* \(([^)]+)\) ↔ \*\*([^*]+)\*\* \(([^)]+)\): (.+)', class_section.group(1)):
+    for match in clash_pattern.finditer(class_section.group(0)):
         clashes.append({
             'type': 'class',
             'name1': match.group(1), 'loc1': match.group(2),
@@ -40,9 +47,9 @@ if class_section:
         })
 
 # Parse similar functions
-func_section = re.search(r'## ⚠️ Potentially Similar Functions\n\n.*?\n\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+func_section = re.search(r'## ⚠️ Potentially Similar Functions.*?(?=\n## |\Z)', content, re.DOTALL)
 if func_section:
-    for match in re.finditer(r'\*\*([^*]+)\*\* \(([^)]+)\) ↔ \*\*([^*]+)\*\* \(([^)]+)\): (.+)', func_section.group(1)):
+    for match in clash_pattern.finditer(func_section.group(0)):
         clashes.append({
             'type': 'function',
             'name1': match.group(1), 'loc1': match.group(2),
