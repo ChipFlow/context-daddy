@@ -21,6 +21,7 @@ CACHE_FILE="${CLAUDE_DIR}/repo-map-cache.json"
 
 # Check cache version - must match CACHE_VERSION in generate-repo-map.py
 EXPECTED_CACHE_VERSION=2
+CHECK_MARKER="${CLAUDE_DIR}/.cache-checked-v2"
 if [[ -f "${CACHE_FILE}" ]]; then
     CACHE_VERSION=$(python3 -c "import json; print(json.load(open('${CACHE_FILE}')).get('version', 0))" 2>/dev/null || echo "0")
     if [[ "${CACHE_VERSION}" != "${EXPECTED_CACHE_VERSION}" ]]; then
@@ -28,6 +29,8 @@ if [[ -f "${CACHE_FILE}" ]]; then
         rm -f "${CACHE_FILE}" "${REPO_MAP}"
     fi
 fi
+# Mark as checked so PreToolUse hook can skip redundant checks
+touch "${CHECK_MARKER}"
 
 # Determine repo map status message
 if [[ -f "${REPO_MAP}" ]]; then

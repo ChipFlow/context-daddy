@@ -1,6 +1,6 @@
 {
   "name": "context-tools",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Context management tools for Claude Code: project manifest, repo map with duplicate detection, and learnings system",
   "author": {
     "name": "Robert Taylor"
