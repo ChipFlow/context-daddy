@@ -34,8 +34,8 @@ import tree_sitter_rust as tsrust
 from tree_sitter import Language, Parser, Node
 
 
-# Cache format version - bump when Symbol structure changes
-CACHE_VERSION = 1
+# Cache format version - bump when Symbol structure or file selection changes
+CACHE_VERSION = 2
 
 # Default to 50% of available cores for parsing
 DEFAULT_WORKERS_PERCENT = 50
@@ -813,9 +813,10 @@ def format_repo_map(symbols: list[Symbol], similar_classes: list, similar_functi
 
 EXCLUDE_DIRS = {
     "node_modules", ".git", "__pycache__", "venv", ".venv", "target", "build",
-    "dist", ".next", ".cache", "vendor", ".tox", ".pytest_cache", ".mypy_cache",
+    "dist", ".next", ".cache", ".tox", ".pytest_cache", ".mypy_cache",
     ".ruff_cache", "site-packages", "eggs", ".eggs"
 }
+# Note: "vendor" is intentionally NOT excluded - we want to index vendored code
 
 
 def find_files(root: Path, extensions: set[str]) -> list[Path]:
