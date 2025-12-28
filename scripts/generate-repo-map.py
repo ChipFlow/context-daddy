@@ -971,6 +971,9 @@ def main():
 
             update_progress("parsing", 0, len(files_to_parse), len(all_symbols))
 
+            # Calculate update interval for ~10% progress updates
+            update_interval = max(1, len(files_to_parse) // 20)  # Update ~20 times = every 5%
+
             if num_workers > 1 and len(files_to_parse) > 10:
                 # Parallel parsing
                 print(f"Parsing {len(files_to_parse)} files with {num_workers} workers...")
@@ -985,7 +988,7 @@ def main():
                             if mtime > 0:  # Valid result
                                 cache.update(rel_path, mtime, content_hash, symbols)
                             completed += 1
-                            if completed % 50 == 0:
+                            if completed % update_interval == 0 or completed == len(files_to_parse):
                                 cache.save_if_needed()
                                 update_progress("parsing", completed, len(files_to_parse), len(all_symbols))
                                 print(f"  Parsed {completed}/{len(files_to_parse)} files...")
@@ -1002,7 +1005,7 @@ def main():
                         cache.update(rel_path, mtime, content_hash, symbols)
                     cache.save_if_needed()
                     completed += 1
-                    if completed % 10 == 0:
+                    if completed % update_interval == 0 or completed == len(files_to_parse):
                         update_progress("parsing", completed, len(files_to_parse), len(all_symbols))
 
         # Remove deleted files from cache

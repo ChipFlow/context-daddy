@@ -17,27 +17,96 @@ mkdir -p "${CLAUDE_DIR}"
 # Generate project manifest (quick, runs synchronously)
 uv run "${SCRIPT_DIR}/generate-manifest.py" "${PROJECT_ROOT}" 2>/dev/null || true
 
-# Start repo map generation in background (can take a while for large projects)
-# Uses lock file to prevent concurrent runs
-# Progress is saved periodically, so safe to interrupt
-(
-    nohup uv run "${SCRIPT_DIR}/generate-repo-map.py" "${PROJECT_ROOT}" \
-        > "${CLAUDE_DIR}/repo-map-build.log" 2>&1 &
-) &
-
-# Brief status message for user (stderr = displayed to user)
 REPO_MAP="${CLAUDE_DIR}/repo-map.md"
-if [[ -f "${REPO_MAP}" ]]; then
-    SYMBOL_COUNT=$(grep -c "^\*\*" "${REPO_MAP}" 2>/dev/null || echo "0")
-    if [[ -f "${CLAUDE_DIR}/repo-map-cache.lock" ]]; then
-        echo "[context-tools] Repo map: ${SYMBOL_COUNT} symbols (updating...)" >&2
-    else
+LOCK_FILE="${CLAUDE_DIR}/repo-map-cache.lock"
+PROGRESS_FILE="${CLAUDE_DIR}/repo-map-progress.json"
+
+# Function to show progress from progress file
+show_progress() {
+    if [[ -f "${PROGRESS_FILE}" ]]; then
+        python3 -c "
+import json
+with open('${PROGRESS_FILE}') as f:
+    p = json.load(f)
+status = p.get('status', 'unknown')
+if status == 'parsing':
+    parsed = p.get('files_parsed', 0)
+    to_parse = p.get('files_to_parse', 0)
+    symbols = p.get('symbols_found', 0)
+    if to_parse > 0:
+        pct = int(parsed / to_parse * 100)
+        print(f'[context-tools] Indexing: {pct}% ({parsed}/{to_parse} files, {symbols} symbols)')
+elif status == 'complete':
+    print(f'[context-tools] Indexing complete: {p.get(\"symbols_found\", 0)} symbols')
+" 2>/dev/null
+    fi
+}
+
+# Check if this is first run (no existing repo map)
+if [[ ! -f "${REPO_MAP}" ]] && [[ ! -f "${LOCK_FILE}" ]]; then
+    # First run: show progress synchronously with periodic updates
+    echo "[context-tools] First run - indexing codebase..." >&2
+
+    # Start repo map generation in background
+    uv run "${SCRIPT_DIR}/generate-repo-map.py" "${PROJECT_ROOT}" \
+        > "${CLAUDE_DIR}/repo-map-build.log" 2>&1 &
+    REPO_MAP_PID=$!
+
+    # Monitor progress every 2 seconds, show updates at 10% increments
+    LAST_PCT=-1
+    while kill -0 "$REPO_MAP_PID" 2>/dev/null; do
+        if [[ -f "${PROGRESS_FILE}" ]]; then
+            CURRENT_PCT=$(python3 -c "
+import json
+try:
+    with open('${PROGRESS_FILE}') as f:
+        p = json.load(f)
+    if p.get('status') == 'parsing':
+        to_parse = p.get('files_to_parse', 0)
+        if to_parse > 0:
+            print(int(p.get('files_parsed', 0) / to_parse * 100))
+        else:
+            print(0)
+    elif p.get('status') == 'complete':
+        print(100)
+    else:
+        print(0)
+except:
+    print(0)
+" 2>/dev/null || echo "0")
+
+            # Show update at every 10% increment
+            PCT_BUCKET=$((CURRENT_PCT / 10 * 10))
+            if [[ "${PCT_BUCKET}" -gt "${LAST_PCT}" ]]; then
+                show_progress >&2
+                LAST_PCT="${PCT_BUCKET}"
+            fi
+        fi
+        sleep 2
+    done
+
+    # Show final status
+    if [[ -f "${REPO_MAP}" ]]; then
+        SYMBOL_COUNT=$(grep -c "^\*\*" "${REPO_MAP}" 2>/dev/null || echo "0")
+        echo "[context-tools] Repo map ready: ${SYMBOL_COUNT} symbols" >&2
+    fi
+else
+    # Subsequent runs: background update, show current status
+    if [[ -f "${REPO_MAP}" ]]; then
+        SYMBOL_COUNT=$(grep -c "^\*\*" "${REPO_MAP}" 2>/dev/null || echo "0")
         echo "[context-tools] Repo map: ${SYMBOL_COUNT} symbols" >&2
     fi
-elif [[ -f "${CLAUDE_DIR}/repo-map-cache.lock" ]]; then
-    echo "[context-tools] Building repo map in background..." >&2
-else
-    echo "[context-tools] Starting repo map generation..." >&2
+
+    # Start background update if not already running
+    if [[ ! -f "${LOCK_FILE}" ]]; then
+        (
+            nohup uv run "${SCRIPT_DIR}/generate-repo-map.py" "${PROJECT_ROOT}" \
+                > "${CLAUDE_DIR}/repo-map-build.log" 2>&1 &
+        ) &
+        echo "[context-tools] Checking for updates..." >&2
+    else
+        show_progress >&2 || echo "[context-tools] Update in progress..." >&2
+    fi
 fi
 
 # Display project context if manifest exists
