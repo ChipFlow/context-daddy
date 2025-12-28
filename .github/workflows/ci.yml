@@ -20,6 +20,25 @@ jobs:
           python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))"
           echo "Valid JSON"
 
+      - name: Validate marketplace.json
+        run: |
+          echo "Validating .claude-plugin/marketplace.json..."
+          python3 -c "
+          import json
+          with open('.claude-plugin/marketplace.json') as f:
+              m = json.load(f)
+          # Check required fields
+          assert 'name' in m, 'Missing name field'
+          assert 'owner' in m, 'Missing owner field'
+          assert 'plugins' in m, 'Missing plugins field'
+          assert len(m['plugins']) > 0, 'No plugins defined'
+          for p in m['plugins']:
+              assert 'name' in p, 'Plugin missing name'
+              assert 'source' in p, 'Plugin missing source'
+          print('All required fields present')
+          "
+          echo "Valid marketplace.json"
+
       - name: Validate hooks.json
         run: |
           echo "Validating hooks/hooks.json..."
@@ -249,3 +268,54 @@ jobs:
             exit 1
           fi
           echo "Session start hook works correctly"
+
+  test-plugin-install:
+    name: Test Plugin Installation
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Verify Claude Code installed
+        run: claude --version
+
+      - name: Add marketplace from local checkout
+        run: |
+          echo "Adding local directory as marketplace..."
+          claude plugin marketplace add ./
+          echo "Marketplace added successfully"
+
+      - name: List available plugins
+        run: |
+          echo "Listing plugins from marketplace..."
+          claude plugin list --all 2>&1 || true
+
+      - name: Install plugin
+        run: |
+          echo "Installing context-tools plugin..."
+          claude plugin install context-tools
+          echo "Plugin installed successfully"
+
+      - name: Verify plugin installed
+        run: |
+          echo "Verifying plugin is installed..."
+          claude plugin list | grep -q "context-tools" || {
+            echo "ERROR: Plugin not found in installed list"
+            exit 1
+          }
+          echo "Plugin verification passed"
+
+      - name: Test plugin loads with --plugin-dir
+        run: |
+          echo "Testing plugin loads correctly..."
+          claude --plugin-dir ./ --help > /dev/null 2>&1
+          echo "Plugin loads without errors"

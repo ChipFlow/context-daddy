@@ -34,15 +34,32 @@ Helps Claude remember important discoveries:
 
 ### Option 1: Install from GitHub (recommended)
 
+First, add the repository as a plugin marketplace:
+
 ```bash
-claude plugins add chipflow/claude-context-tools
+claude plugin marketplace add chipflow/claude-context-tools
 ```
 
-### Option 2: Install from local directory
+Then install the plugin:
+
+```bash
+claude plugin install context-tools
+```
+
+### Option 2: Install from local directory (for development)
 
 ```bash
 git clone https://github.com/chipflow/claude-context-tools.git
-claude plugins add ./claude-context-tools
+claude plugin marketplace add ./claude-context-tools
+claude plugin install context-tools
+```
+
+### Option 3: Load directly without installing
+
+For testing or one-off use:
+
+```bash
+claude --plugin-dir ./claude-context-tools
 ```
 
 ## Requirements
