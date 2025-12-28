@@ -944,11 +944,32 @@ def main():
         cached_count = total_files - len(files_to_parse)
         parsed_count = len(files_to_parse)
 
+        # Progress file for status updates
+        progress_path = claude_dir / "repo-map-progress.json"
+
+        def update_progress(status: str, completed: int = 0, total: int = 0, symbols: int = 0):
+            """Write progress update to file."""
+            progress_data = {
+                "status": status,
+                "files_total": total_files,
+                "files_cached": cached_count,
+                "files_to_parse": parsed_count,
+                "files_parsed": completed,
+                "symbols_found": symbols,
+                "timestamp": time.time(),
+            }
+            try:
+                progress_path.write_text(json.dumps(progress_data))
+            except IOError:
+                pass
+
         # Parallel parse uncached files
         if files_to_parse:
             num_workers = get_worker_count(workers_percent)
             # Use at most as many workers as files to parse
             num_workers = min(num_workers, len(files_to_parse))
+
+            update_progress("parsing", 0, len(files_to_parse), len(all_symbols))
 
             if num_workers > 1 and len(files_to_parse) > 10:
                 # Parallel parsing
@@ -966,11 +987,13 @@ def main():
                             completed += 1
                             if completed % 50 == 0:
                                 cache.save_if_needed()
+                                update_progress("parsing", completed, len(files_to_parse), len(all_symbols))
                                 print(f"  Parsed {completed}/{len(files_to_parse)} files...")
                         except Exception as e:
                             print(f"  Error parsing file: {e}")
             else:
                 # Sequential parsing for small number of files
+                completed = 0
                 for args in files_to_parse:
                     rel_path, mtime, content_hash, symbol_dicts, lang = parse_file_worker(args)
                     symbols = [Symbol.from_dict(d) for d in symbol_dicts]
@@ -978,6 +1001,9 @@ def main():
                     if mtime > 0:
                         cache.update(rel_path, mtime, content_hash, symbols)
                     cache.save_if_needed()
+                    completed += 1
+                    if completed % 10 == 0:
+                        update_progress("parsing", completed, len(files_to_parse), len(all_symbols))
 
         # Remove deleted files from cache
         cache.remove_stale(all_rel_paths)
@@ -995,7 +1021,24 @@ def main():
     repo_map = format_repo_map(all_symbols, similar_classes, similar_functions, doc_coverage, root)
 
     claude_dir.mkdir(exist_ok=True)
-    (claude_dir / "repo-map.md").write_text(repo_map)
+
+    # Write to .in-progress first, then rename atomically
+    in_progress_path = claude_dir / "repo-map.md.in-progress"
+    final_path = claude_dir / "repo-map.md"
+    in_progress_path.write_text(repo_map)
+    in_progress_path.rename(final_path)
+
+    # Write final progress status
+    progress_path = claude_dir / "repo-map-progress.json"
+    progress_data = {
+        "status": "complete",
+        "files_total": total_files,
+        "files_cached": cached_count,
+        "files_parsed": parsed_count,
+        "symbols_found": len(all_symbols),
+        "timestamp": time.time(),
+    }
+    progress_path.write_text(json.dumps(progress_data))
 
     print(repo_map)
     print("\n---")

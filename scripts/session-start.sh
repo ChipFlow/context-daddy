@@ -79,14 +79,63 @@ fi
 
 # Show repo map status
 REPO_MAP="${CLAUDE_DIR}/repo-map.md"
-REPO_MAP_CACHE="${CLAUDE_DIR}/repo-map-cache.json"
+PROGRESS_FILE="${CLAUDE_DIR}/repo-map-progress.json"
+
 if [[ -f "${REPO_MAP}" ]]; then
     SYMBOL_COUNT=$(grep -c "^\*\*" "${REPO_MAP}" 2>/dev/null || echo "0")
     echo "🗺️  Repo map available (${SYMBOL_COUNT} symbols)"
-    # Check if cache exists and if we're rebuilding
+    # Check if we're rebuilding
     if [[ -f "${CLAUDE_DIR}/repo-map-cache.lock" ]]; then
-        echo "   ⏳ Updating in background..."
+        if [[ -f "${PROGRESS_FILE}" ]]; then
+            python3 -c "
+import json
+with open('${PROGRESS_FILE}') as f:
+    p = json.load(f)
+status = p.get('status', 'unknown')
+if status == 'parsing':
+    parsed = p.get('files_parsed', 0)
+    to_parse = p.get('files_to_parse', 0)
+    if to_parse > 0:
+        pct = int(parsed / to_parse * 100)
+        print(f'   ⏳ Updating: {parsed}/{to_parse} files ({pct}%)')
+    else:
+        print('   ⏳ Updating...')
+else:
+    print('   ⏳ Updating in background...')
+" 2>/dev/null || echo "   ⏳ Updating in background..."
+        else
+            echo "   ⏳ Updating in background..."
+        fi
+    fi
+elif [[ -f "${CLAUDE_DIR}/repo-map-cache.lock" ]]; then
+    # Building for first time
+    if [[ -f "${PROGRESS_FILE}" ]]; then
+        python3 -c "
+import json
+with open('${PROGRESS_FILE}') as f:
+    p = json.load(f)
+status = p.get('status', 'unknown')
+if status == 'parsing':
+    parsed = p.get('files_parsed', 0)
+    to_parse = p.get('files_to_parse', 0)
+    total = p.get('files_total', 0)
+    cached = p.get('files_cached', 0)
+    if to_parse > 0:
+        pct = int(parsed / to_parse * 100)
+        print(f'🗺️  Building repo map: {parsed}/{to_parse} files ({pct}%)')
+    else:
+        print(f'🗺️  Building repo map ({total} files)...')
+else:
+    print('🗺️  Building repo map...')
+" 2>/dev/null || echo "🗺️  Building repo map in background..."
+    else
+        echo "🗺️  Building repo map in background..."
     fi
 else
     echo "🗺️  Building repo map in background..."
+fi
+
+# Hint about checking progress
+if [[ -f "${CLAUDE_DIR}/repo-map-cache.lock" ]] && [[ ! -f "${REPO_MAP}" ]]; then
+    echo "   Use /context-tools:status to check progress"
 fi
