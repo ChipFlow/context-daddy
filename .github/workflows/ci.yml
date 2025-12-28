@@ -1,0 +1,251 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Plugin Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate plugin.json
+        run: |
+          echo "Validating .claude-plugin/plugin.json..."
+          python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))"
+          echo "Valid JSON"
+
+      - name: Validate hooks.json
+        run: |
+          echo "Validating hooks/hooks.json..."
+          python3 -c "import json; json.load(open('hooks/hooks.json'))"
+          echo "Valid JSON"
+
+      - name: Lint bash scripts
+        run: |
+          echo "Checking bash script syntax..."
+          for script in scripts/*.sh; do
+            echo "  Checking $script..."
+            bash -n "$script"
+          done
+          echo "All scripts have valid syntax"
+
+  test-scripts:
+    name: Test Plugin Scripts
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Create test project
+        run: |
+          mkdir -p test-project
+          cd test-project
+
+          # Python test file
+          cat > main.py << 'EOF'
+          """Test Python module for CI."""
+
+          class TestClass:
+              """A test class with documentation."""
+
+              def method_one(self, value: int) -> str:
+                  """Convert value to string."""
+                  return str(value)
+
+          def helper_function(x: int, y: int) -> int:
+              """Add two numbers together."""
+              return x + y
+          EOF
+
+          # C++ test file
+          cat > lib.cpp << 'EOF'
+          /// A simple C++ class for testing
+          class Calculator {
+          public:
+              /// Add two integers
+              int add(int a, int b) {
+                  return a + b;
+              }
+          };
+
+          /// Multiply two numbers
+          int multiply(int x, int y) {
+              return x * y;
+          }
+          EOF
+
+          # Rust test file
+          cat > utils.rs << 'EOF'
+          /// A point in 2D space
+          struct Point {
+              x: f64,
+              y: f64,
+          }
+
+          impl Point {
+              /// Create a new point
+              fn new(x: f64, y: f64) -> Self {
+                  Point { x, y }
+              }
+          }
+
+          /// Calculate distance between two points
+          fn distance(p1: &Point, p2: &Point) -> f64 {
+              ((p2.x - p1.x).powi(2) + (p2.y - p1.y).powi(2)).sqrt()
+          }
+          EOF
+
+      - name: Run generate-manifest.py
+        run: |
+          cd test-project
+          uv run ../scripts/generate-manifest.py .
+          echo "--- Manifest content ---"
+          cat .claude/project-manifest.json
+
+      - name: Run generate-repo-map.py
+        run: |
+          cd test-project
+          uv run ../scripts/generate-repo-map.py . 2>&1 | head -100
+          echo "--- Repo map generated ---"
+
+      - name: Verify manifest output
+        run: |
+          cd test-project
+          if [ ! -f ".claude/project-manifest.json" ]; then
+            echo "ERROR: project-manifest.json not created"
+            exit 1
+          fi
+          # Check it's valid JSON
+          python3 -c "import json; json.load(open('.claude/project-manifest.json'))"
+          echo "Manifest is valid JSON"
+
+      - name: Verify repo-map output
+        run: |
+          cd test-project
+          if [ ! -f ".claude/repo-map.md" ]; then
+            echo "ERROR: repo-map.md not created"
+            exit 1
+          fi
+
+          # Verify Python symbols were extracted
+          if ! grep -q "TestClass" .claude/repo-map.md; then
+            echo "ERROR: Python class not found in repo map"
+            exit 1
+          fi
+          if ! grep -q "helper_function" .claude/repo-map.md; then
+            echo "ERROR: Python function not found in repo map"
+            exit 1
+          fi
+
+          # Verify C++ symbols were extracted
+          if ! grep -q "Calculator" .claude/repo-map.md; then
+            echo "ERROR: C++ class not found in repo map"
+            exit 1
+          fi
+          if ! grep -q "multiply" .claude/repo-map.md; then
+            echo "ERROR: C++ function not found in repo map"
+            exit 1
+          fi
+
+          # Verify Rust symbols were extracted
+          if ! grep -q "Point" .claude/repo-map.md; then
+            echo "ERROR: Rust struct not found in repo map"
+            exit 1
+          fi
+          if ! grep -q "distance" .claude/repo-map.md; then
+            echo "ERROR: Rust function not found in repo map"
+            exit 1
+          fi
+
+          echo "All expected symbols found in repo map"
+
+      - name: Verify cache created
+        run: |
+          cd test-project
+          if [ ! -f ".claude/repo-map-cache.json" ]; then
+            echo "ERROR: repo-map-cache.json not created"
+            exit 1
+          fi
+          python3 -c "import json; json.load(open('.claude/repo-map-cache.json'))"
+          echo "Cache file is valid JSON"
+
+      - name: Test incremental update
+        run: |
+          cd test-project
+          # Add a new file
+          cat > extra.py << 'EOF'
+          def new_function():
+              """A newly added function."""
+              pass
+          EOF
+
+          # Re-run repo map
+          uv run ../scripts/generate-repo-map.py . 2>&1 | tail -10
+
+          # Verify new function was picked up
+          if ! grep -q "new_function" .claude/repo-map.md; then
+            echo "ERROR: New function not found after incremental update"
+            exit 1
+          fi
+          echo "Incremental update works correctly"
+
+  test-session-start:
+    name: Test Session Start Hook
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Create test project
+        run: |
+          mkdir -p test-project
+          cat > test-project/app.py << 'EOF'
+          """Simple test application."""
+
+          def main():
+              """Entry point."""
+              print("Hello, World!")
+          EOF
+
+      - name: Run session-start.sh
+        run: |
+          cd test-project
+          export CLAUDE_PLUGIN_ROOT="${GITHUB_WORKSPACE}"
+          bash ../scripts/session-start.sh
+          echo "Session start hook completed"
+
+      - name: Verify session start output
+        run: |
+          cd test-project
+          # Give background process a moment
+          sleep 2
+
+          if [ ! -f ".claude/project-manifest.json" ]; then
+            echo "ERROR: Manifest not created by session start"
+            exit 1
+          fi
+          echo "Session start hook works correctly"

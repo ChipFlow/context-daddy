@@ -1,5 +1,7 @@
 # Context Tools for Claude Code
 
+[![CI](https://github.com/ChipFlow/claude-context-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/ChipFlow/claude-context-tools/actions/workflows/ci.yml)
+
 A Claude Code plugin that helps Claude maintain context awareness in large codebases through automatic project mapping, duplicate detection, and learning retention.
 
 ## Features
@@ -13,10 +15,14 @@ Automatically detects and tracks:
 
 ### Repository Map with Duplicate Detection
 Generates a comprehensive map of your codebase:
+- **Multi-language support**: Python, C++, and Rust
 - Extracts all classes, functions, and methods with their signatures
 - Detects potentially similar classes that may have overlapping responsibilities
 - Identifies similar functions that could be candidates for consolidation
 - Analyzes documentation coverage to highlight gaps
+- **Incremental caching**: Only re-parses changed files (mtime + content hash)
+- **Parallel parsing**: Uses multiple CPU cores for large codebases
+- **Background execution**: Repo map builds asynchronously on session start
 
 ### Learnings System
 Helps Claude remember important discoveries:
@@ -66,6 +72,25 @@ The plugin registers two hooks:
 - `/context-tools:manifest` - Regenerate the project manifest
 - `/context-tools:learnings` - View and manage project learnings
 
+## Configuration
+
+### Repo Map Options
+
+The repo map generator supports command-line options:
+
+```bash
+# Use 75% of CPU cores for parsing (default: 50%)
+uv run scripts/generate-repo-map.py /path/to/project --workers=75
+```
+
+### Supported Languages
+
+| Language | Extensions | Parser |
+|----------|------------|--------|
+| Python | `.py` | Built-in AST |
+| C++ | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.h`, `.hxx` | tree-sitter-cpp |
+| Rust | `.rs` | tree-sitter-rust |
+
 ## Generated Files
 
 The plugin creates files in your project's `.claude/` directory:
@@ -74,6 +99,7 @@ The plugin creates files in your project's `.claude/` directory:
 .claude/
 ├── project-manifest.json   # Build system, languages, entry points
 ├── repo-map.md             # Code structure with similarity analysis
+├── repo-map-cache.json     # Symbol cache for incremental updates
 └── learnings.md            # Project-specific learnings
 ```
 
@@ -147,6 +173,35 @@ When the repo map shows similar classes or functions:
 1. Review the flagged pairs to determine if they're truly duplicates
 2. If they serve different purposes, improve their docstrings to clarify intent
 3. If they're duplicates, consolidate them into a single implementation
+
+## Development
+
+### Running Tests Locally
+
+```bash
+# Validate JSON configs
+python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))"
+python3 -c "import json; json.load(open('hooks/hooks.json'))"
+
+# Check bash script syntax
+bash -n scripts/session-start.sh
+bash -n scripts/precompact.sh
+
+# Test repo map generation
+mkdir -p /tmp/test-project
+echo 'def hello(): pass' > /tmp/test-project/main.py
+uv run scripts/generate-repo-map.py /tmp/test-project
+```
+
+### Adding Language Support
+
+To add support for a new language:
+
+1. Add the tree-sitter grammar to dependencies in `generate-repo-map.py`
+2. Create an `extract_symbols_from_<lang>()` function
+3. Add file discovery in `find_<lang>_files()`
+4. Update `parse_file_worker()` to handle the new language
+5. Add tests in the CI workflow
 
 ## License
 
