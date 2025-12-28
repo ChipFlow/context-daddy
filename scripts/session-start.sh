@@ -34,8 +34,18 @@ touch "${CLAUDE_DIR}/.last-cache-check"
 # Determine repo map status message
 if [[ -f "${REPO_MAP}" ]]; then
     SYMBOL_COUNT=$(grep -c "^\*\*" "${REPO_MAP}" 2>/dev/null || echo "0")
+    # Count naming clashes (similar classes + similar functions)
+    CLASH_COUNT=$(python3 -c "
+import re
+from pathlib import Path
+content = Path('${REPO_MAP}').read_text()
+classes = len(re.findall(r'\*\*[^*]+\*\* \([^)]+\) ↔', content))
+print(classes)
+" 2>/dev/null || echo "0")
     if [[ -f "${LOCK_FILE}" ]]; then
         STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols (updating in background)"
+    elif [[ "${CLASH_COUNT}" -gt 0 ]]; then
+        STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols, ${CLASH_COUNT} naming clash(es)"
     else
         STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols"
     fi
@@ -97,6 +107,9 @@ fi
 # Add repo map summary
 if [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
+    if [[ "${CLASH_COUNT}" -gt 0 ]]; then
+        CONTEXT="${CONTEXT}\n${CLASH_COUNT} potential naming clash(es) detected. Use /clash-summary or /resolve-clashes to review."
+    fi
 fi
 
 # Output JSON with systemMessage for user display

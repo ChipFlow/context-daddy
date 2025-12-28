@@ -614,13 +614,30 @@ def extract_symbols_from_rust(file_path: Path, relative_to: Path) -> list[Symbol
     return symbols
 
 
+def get_language(file_path: str) -> str:
+    """Get language from file extension."""
+    ext = Path(file_path).suffix.lower()
+    if ext == ".py":
+        return "python"
+    elif ext == ".rs":
+        return "rust"
+    elif ext in (".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx"):
+        return "cpp"
+    return "unknown"
+
+
+def same_language(sym1: Symbol, sym2: Symbol) -> bool:
+    """Check if two symbols are from the same programming language."""
+    return get_language(sym1.file_path) == get_language(sym2.file_path)
+
+
 def similarity(a: str, b: str) -> float:
     """Calculate similarity ratio between two strings."""
     return SequenceMatcher(None, a.lower().replace('_', ''), b.lower().replace('_', '')).ratio()
 
 
 def find_similar_classes(symbols: list[Symbol], name_threshold: float = 0.75, doc_threshold: float = 0.65) -> list[tuple[Symbol, Symbol, str]]:
-    """Find classes with similar names or docstrings."""
+    """Find classes with similar names or docstrings (same language only)."""
     similar = []
     classes = [s for s in symbols if s.kind == "class" and not s.name.startswith("Test")]
     compared = set()
@@ -628,6 +645,9 @@ def find_similar_classes(symbols: list[Symbol], name_threshold: float = 0.75, do
     for i, cls1 in enumerate(classes):
         for cls2 in classes[i+1:]:
             if cls1.file_path == cls2.file_path:
+                continue
+            # Skip cross-language comparisons (intentional duplicates for bindings, etc.)
+            if not same_language(cls1, cls2):
                 continue
             pair_key = tuple(sorted([cls1.location, cls2.location]))
             if pair_key in compared:
@@ -651,7 +671,7 @@ def find_similar_classes(symbols: list[Symbol], name_threshold: float = 0.75, do
 
 
 def find_similar_functions(symbols: list[Symbol], name_threshold: float = 0.75, doc_threshold: float = 0.65) -> list[tuple[Symbol, Symbol, str]]:
-    """Find top-level functions with similar names or docstrings."""
+    """Find top-level functions with similar names or docstrings (same language only)."""
     similar = []
     functions = [s for s in symbols if s.kind == "function" and not s.name.startswith('_') and not s.name.startswith('test_')]
     compared = set()
@@ -659,6 +679,9 @@ def find_similar_functions(symbols: list[Symbol], name_threshold: float = 0.75, 
     for i, fn1 in enumerate(functions):
         for fn2 in functions[i+1:]:
             if fn1.file_path == fn2.file_path:
+                continue
+            # Skip cross-language comparisons (intentional duplicates for bindings, etc.)
+            if not same_language(fn1, fn2):
                 continue
             pair_key = tuple(sorted([fn1.location, fn2.location]))
             if pair_key in compared:
