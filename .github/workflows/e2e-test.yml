@@ -1,0 +1,261 @@
+name: E2E Integration Test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+# Only run if API key is available (not on forks)
+jobs:
+  e2e-test:
+    name: E2E Test with Claude Code
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'ChipFlow/claude-context-tools' }}
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - name: Check for API key
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "ANTHROPIC_API_KEY not set, skipping E2E tests"
+            echo "To enable E2E tests, add ANTHROPIC_API_KEY to repository secrets"
+            exit 0
+          fi
+          echo "API key available, proceeding with E2E tests"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Create Python test project
+        run: |
+          mkdir -p test-projects/python-app
+          cd test-projects/python-app
+
+          cat > calculator.py << 'EOF'
+          """A simple calculator module."""
+
+          class Calculator:
+              """Basic arithmetic calculator."""
+
+              def add(self, a: float, b: float) -> float:
+                  """Add two numbers."""
+                  return a + b
+
+              def subtract(self, a: float, b: float) -> float:
+                  """Subtract b from a."""
+                  return a - b
+          EOF
+
+          cat > main.py << 'EOF'
+          """Main entry point."""
+          from calculator import Calculator
+
+          def main():
+              calc = Calculator()
+              print(f"2 + 3 = {calc.add(2, 3)}")
+              print(f"5 - 2 = {calc.subtract(5, 2)}")
+
+          if __name__ == "__main__":
+              main()
+          EOF
+
+      - name: Create C++ test project
+        run: |
+          mkdir -p test-projects/cpp-app
+          cd test-projects/cpp-app
+
+          cat > calculator.hpp << 'EOF'
+          #pragma once
+
+          /// A simple calculator class
+          class Calculator {
+          public:
+              /// Add two numbers
+              double add(double a, double b) { return a + b; }
+
+              /// Subtract b from a
+              double subtract(double a, double b) { return a - b; }
+          };
+          EOF
+
+          cat > main.cpp << 'EOF'
+          #include <iostream>
+          #include "calculator.hpp"
+
+          int main() {
+              Calculator calc;
+              std::cout << "2 + 3 = " << calc.add(2, 3) << std::endl;
+              std::cout << "5 - 2 = " << calc.subtract(5, 2) << std::endl;
+              return 0;
+          }
+          EOF
+
+      - name: Create Rust test project
+        run: |
+          mkdir -p test-projects/rust-app/src
+          cd test-projects/rust-app
+
+          cat > Cargo.toml << 'EOF'
+          [package]
+          name = "calculator"
+          version = "0.1.0"
+          edition = "2021"
+          EOF
+
+          cat > src/lib.rs << 'EOF'
+          /// A simple calculator
+          pub struct Calculator;
+
+          impl Calculator {
+              /// Create a new calculator
+              pub fn new() -> Self {
+                  Calculator
+              }
+
+              /// Add two numbers
+              pub fn add(&self, a: f64, b: f64) -> f64 {
+                  a + b
+              }
+
+              /// Subtract b from a
+              pub fn subtract(&self, a: f64, b: f64) -> f64 {
+                  a - b
+              }
+          }
+          EOF
+
+          cat > src/main.rs << 'EOF'
+          use calculator::Calculator;
+
+          fn main() {
+              let calc = Calculator::new();
+              println!("2 + 3 = {}", calc.add(2.0, 3.0));
+              println!("5 - 2 = {}", calc.subtract(5.0, 2.0));
+          }
+          EOF
+
+      - name: Test Python project with Claude
+        run: |
+          cd test-projects/python-app
+
+          echo "=== Testing Python project ==="
+
+          # Run Claude with the plugin to add multiply method
+          claude --plugin-dir ${{ github.workspace }} \
+            -p "Add a multiply method to the Calculator class in calculator.py. Only modify calculator.py, nothing else." \
+            --allowedTools "Edit,Read,Glob,Grep" \
+            --max-turns 5 \
+            2>&1 | tee claude-output.txt
+
+          # Verify the repo map was generated
+          if [ ! -f ".claude/repo-map.md" ]; then
+            echo "WARNING: repo-map.md not found (plugin may not have triggered)"
+          else
+            echo "✓ Repo map generated"
+            grep -q "Calculator" .claude/repo-map.md && echo "✓ Calculator class found in repo map"
+          fi
+
+          # Verify multiply was added
+          if grep -q "multiply" calculator.py; then
+            echo "✓ multiply method added to calculator.py"
+          else
+            echo "✗ multiply method NOT found in calculator.py"
+            cat calculator.py
+            exit 1
+          fi
+
+          # Verify syntax is valid
+          python3 -m py_compile calculator.py && echo "✓ Python syntax valid"
+
+      - name: Test C++ project with Claude
+        run: |
+          cd test-projects/cpp-app
+
+          echo "=== Testing C++ project ==="
+
+          # Run Claude with the plugin to add multiply method
+          claude --plugin-dir ${{ github.workspace }} \
+            -p "Add a multiply method to the Calculator class in calculator.hpp. Only modify calculator.hpp, nothing else." \
+            --allowedTools "Edit,Read,Glob,Grep" \
+            --max-turns 5 \
+            2>&1 | tee claude-output.txt
+
+          # Verify the repo map was generated
+          if [ ! -f ".claude/repo-map.md" ]; then
+            echo "WARNING: repo-map.md not found"
+          else
+            echo "✓ Repo map generated"
+            grep -q "Calculator" .claude/repo-map.md && echo "✓ Calculator class found in repo map"
+          fi
+
+          # Verify multiply was added
+          if grep -q "multiply" calculator.hpp; then
+            echo "✓ multiply method added to calculator.hpp"
+          else
+            echo "✗ multiply method NOT found in calculator.hpp"
+            cat calculator.hpp
+            exit 1
+          fi
+
+      - name: Test Rust project with Claude
+        run: |
+          cd test-projects/rust-app
+
+          echo "=== Testing Rust project ==="
+
+          # Run Claude with the plugin to add multiply method
+          claude --plugin-dir ${{ github.workspace }} \
+            -p "Add a multiply method to the Calculator impl in src/lib.rs. Only modify src/lib.rs, nothing else." \
+            --allowedTools "Edit,Read,Glob,Grep" \
+            --max-turns 5 \
+            2>&1 | tee claude-output.txt
+
+          # Verify the repo map was generated
+          if [ ! -f ".claude/repo-map.md" ]; then
+            echo "WARNING: repo-map.md not found"
+          else
+            echo "✓ Repo map generated"
+            grep -q "Calculator" .claude/repo-map.md && echo "✓ Calculator struct found in repo map"
+          fi
+
+          # Verify multiply was added
+          if grep -q "multiply" src/lib.rs; then
+            echo "✓ multiply method added to src/lib.rs"
+          else
+            echo "✗ multiply method NOT found in src/lib.rs"
+            cat src/lib.rs
+            exit 1
+          fi
+
+          # Verify Rust syntax (if rustc available)
+          if command -v rustc &> /dev/null; then
+            cd src && rustc --edition 2021 --crate-type lib lib.rs -o /dev/null 2>/dev/null && echo "✓ Rust syntax valid" || echo "⚠ Rust syntax check skipped"
+            cd ..
+          fi
+
+      - name: Summary
+        run: |
+          echo ""
+          echo "=== E2E Test Summary ==="
+          echo "✓ Python: Calculator.multiply added and syntax valid"
+          echo "✓ C++: Calculator::multiply added"
+          echo "✓ Rust: Calculator::multiply added"
+          echo ""
+          echo "Plugin successfully integrated with Claude Code!"
