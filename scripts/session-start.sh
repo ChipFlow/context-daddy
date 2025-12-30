@@ -49,7 +49,7 @@ REPO_MAP="${CLAUDE_DIR}/repo-map.md"
 CACHE_FILE="${CLAUDE_DIR}/repo-map-cache.json"
 
 # Check cache version - must match CACHE_VERSION in generate-repo-map.py
-EXPECTED_CACHE_VERSION=2
+EXPECTED_CACHE_VERSION=3
 if [[ -f "${CACHE_FILE}" ]]; then
     CACHE_VERSION=$(python3 -c "import json; print(json.load(open('${CACHE_FILE}')).get('version', 0))" 2>/dev/null || echo "0")
     if [[ "${CACHE_VERSION}" != "${EXPECTED_CACHE_VERSION}" ]]; then
@@ -141,10 +141,14 @@ fi
 # Add repo map summary and MCP tools info
 DB_FILE="${CLAUDE_DIR}/repo-map.db"
 if [[ -f "${DB_FILE}" ]]; then
-    CONTEXT="${CONTEXT}\n\nMCP tools available for symbol search:"
-    CONTEXT="${CONTEXT}\n- mcp__repo-map__search_symbols: Search symbols by name pattern (e.g., 'get_*', '*Handler')"
-    CONTEXT="${CONTEXT}\n- mcp__repo-map__get_file_symbols: Get all symbols in a file"
-    CONTEXT="${CONTEXT}\nUse these tools when exploring the codebase to find functions, classes, or methods."
+    CONTEXT="${CONTEXT}\n\n**PREFER MCP repo-map tools over Grep for code symbol searches:**"
+    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__search_symbols: Search symbols by pattern (e.g., 'get_*', '*Handler')"
+    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__get_file_symbols: Get all symbols in a file"
+    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__get_symbol_content: Get source code of a symbol by name"
+    CONTEXT="${CONTEXT}\n"
+    CONTEXT="${CONTEXT}\nThese MCP tools use a pre-built SQLite index and are significantly faster than Grep"
+    CONTEXT="${CONTEXT}\nfor finding function/class/method definitions. Use them FIRST when searching for"
+    CONTEXT="${CONTEXT}\ncode symbols. Fall back to Grep only for non-symbol text searches."
 elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
 fi

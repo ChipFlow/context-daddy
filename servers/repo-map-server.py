@@ -48,7 +48,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="search_symbols",
-            description="Search for symbols (functions, classes, methods) by name pattern. Supports glob patterns like 'get_*' or '*Config*'.",
+            description="Search for symbols (functions, classes, methods) by name pattern. Supports glob patterns like 'get_*' or '*Config*'. FASTER than Grep for symbol lookups - uses pre-built SQLite index.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -86,7 +86,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="get_symbol_content",
-            description="Get the source code content of a symbol by exact name. Faster than grep for known symbol names.",
+            description="Get the source code content of a symbol by exact name. FASTER than Grep+Read - directly retrieves function/class/method source code from pre-indexed line ranges. Use this instead of Grep when you know the symbol name.",
             inputSchema={
                 "type": "object",
                 "properties": {
