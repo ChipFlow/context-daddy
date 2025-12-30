@@ -2,7 +2,7 @@
 
 Regenerate the repo map for this project to understand the code structure, find similar classes/functions, and identify documentation gaps.
 
-Run this command to regenerate with progress display:
+Run this command to regenerate:
 
 ```bash
 # Kill any existing repo-map process
@@ -30,8 +30,6 @@ if cache_path.exists():
         data = json.loads(cache_path.read_text())
         version = data.get('version', 0)
         if version != CURRENT_VERSION:
-            # Add migration logic here when format changes
-            # For now, just clear incompatible caches
             print(f'Cache version {version} != {CURRENT_VERSION}, clearing...')
             cache_path.unlink()
     except (json.JSONDecodeError, KeyError):
@@ -39,49 +37,15 @@ if cache_path.exists():
         cache_path.unlink()
 " 2>/dev/null
 
-# Clear output file (but keep cache for incremental updates)
-rm -f .claude/repo-map.md
-nohup uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-repo-map.py > .claude/repo-map-build.log 2>&1 &
-
-# Show progress until complete (only print when status changes)
+# Run in foreground with live output
 echo "Regenerating repo map..."
-LAST_PROGRESS=""
-while true; do
-    if [[ -f .claude/repo-map-progress.json ]]; then
-        PROGRESS=$(python3 -c "
-import json
-try:
-    with open('.claude/repo-map-progress.json') as f:
-        p = json.load(f)
-    status = p.get('status', 'unknown')
-    if status == 'complete':
-        print(f\"Complete: {p.get('symbols_found', 0)} symbols found\")
-    elif status == 'indexing':
-        total = p.get('files_total', 0)
-        done = p.get('files_cached', 0) + p.get('files_parsed', 0)
-        pct = (done / total * 100) if total > 0 else 0
-        print(f\"Indexing: {pct:.0f}% ({done}/{total} files)\")
-    else:
-        print(f\"Status: {status}\")
-except Exception as e:
-    print(f'Starting...')
-" 2>/dev/null)
-        if [[ "${PROGRESS}" != "${LAST_PROGRESS}" ]]; then
-            echo "${PROGRESS}"
-            LAST_PROGRESS="${PROGRESS}"
-        fi
-        if [[ "${PROGRESS}" == Complete* ]]; then
-            break
-        fi
-    fi
-    sleep 1
-done
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-repo-map.py 2>&1
 
 # Show summary with clash count
 if [[ -f .claude/repo-map.md ]]; then
     CLASH_COUNT=$(grep -c "^- \*\*" .claude/repo-map.md 2>/dev/null | head -1 || echo "0")
-    echo "Repo map saved to .claude/repo-map.md"
     if [[ "${CLASH_COUNT}" -gt 0 ]]; then
+        echo ""
         echo "${CLASH_COUNT} potential naming clash(es) detected."
         echo "Run /clash-summary for overview or /resolve-clashes to review interactively."
     fi
