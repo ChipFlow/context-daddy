@@ -24,19 +24,12 @@ if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
     fi
 fi
 
-# --- Kill stale indexing process ---
-LOCK_FILE="${CLAUDE_DIR}/repo-map-cache.lock"
-if [[ -f "${LOCK_FILE}" ]]; then
-    OLD_PID=$(cat "${LOCK_FILE}" 2>/dev/null || true)
-    if [[ -n "${OLD_PID}" ]]; then
-        # Check if process is still running
-        if kill -0 "${OLD_PID}" 2>/dev/null; then
-            # Kill it - we'll restart fresh if needed
-            kill "${OLD_PID}" 2>/dev/null || true
-        fi
-        rm -f "${LOCK_FILE}"
-    fi
+# --- Kill ALL stale indexing processes for this project ---
+PIDS=$(pgrep -f "generate-repo-map.py.*${PROJECT_ROOT}" 2>/dev/null || true)
+if [[ -n "${PIDS}" ]]; then
+    echo "${PIDS}" | xargs kill 2>/dev/null || true
 fi
+rm -f "${CLAUDE_DIR}/repo-map-cache.lock"
 
 # Ensure .claude directory exists
 mkdir -p "${CLAUDE_DIR}"
