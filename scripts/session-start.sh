@@ -27,7 +27,15 @@ fi
 # --- Kill ALL stale indexing processes for this project ---
 PIDS=$(pgrep -f "generate-repo-map.py.*${PROJECT_ROOT}" 2>/dev/null || true)
 if [[ -n "${PIDS}" ]]; then
+    # SIGTERM first
     echo "${PIDS}" | xargs kill 2>/dev/null || true
+    sleep 0.5
+    # SIGKILL any survivors
+    PIDS=$(pgrep -f "generate-repo-map.py.*${PROJECT_ROOT}" 2>/dev/null || true)
+    if [[ -n "${PIDS}" ]]; then
+        echo "${PIDS}" | xargs kill -9 2>/dev/null || true
+        sleep 0.2
+    fi
 fi
 rm -f "${CLAUDE_DIR}/repo-map-cache.lock"
 

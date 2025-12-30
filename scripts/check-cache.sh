@@ -15,8 +15,12 @@ LAST_CHECK="${CLAUDE_DIR}/.last-cache-check"
 # Throttle: only check every 30 seconds to avoid slowdown on large codebases
 CHECK_INTERVAL=30
 
-# Skip if already indexing
+# Skip if already indexing (check lock file AND running processes)
 if [[ -f "${LOCK_FILE}" ]]; then
+    exit 0
+fi
+# Also check for running processes (in case lock file was deleted but process still running)
+if pgrep -f "generate-repo-map.py.*${PROJECT_ROOT}" >/dev/null 2>&1; then
     exit 0
 fi
 
