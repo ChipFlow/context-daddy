@@ -174,9 +174,10 @@ jobs:
           echo "=== Testing Python project ==="
 
           # Run Claude with the plugin to add multiply method
+          # Include MCP tools so Claude can query symbols
           claude --plugin-dir ${{ github.workspace }} \
             -p "Add a multiply method to the Calculator class in calculator.py. Only modify calculator.py, nothing else." \
-            --allowedTools "Edit,Read,Glob,Grep" \
+            --allowedTools "Edit,Read,Glob,Grep,mcp__repo-map__search_symbols,mcp__repo-map__get_file_symbols" \
             --max-turns 5 \
             2>&1 | tee claude-output.txt
 
@@ -186,6 +187,21 @@ jobs:
           else
             echo "✓ Repo map generated"
             grep -q "Calculator" .claude/repo-map.md && echo "✓ Calculator class found in repo map"
+          fi
+
+          # Verify SQLite database was created
+          if [ -f ".claude/repo-map.db" ]; then
+            echo "✓ SQLite database created"
+            python3 -c "import sqlite3; c=sqlite3.connect('.claude/repo-map.db'); print(f'  Symbols in DB: {c.execute(\"SELECT COUNT(*) FROM symbols\").fetchone()[0]}')"
+          else
+            echo "⚠ SQLite database not found"
+          fi
+
+          # Check if MCP tools were used (look in output)
+          if grep -q "mcp__repo-map" claude-output.txt 2>/dev/null; then
+            echo "✓ MCP tools were invoked"
+          else
+            echo "⚠ MCP tools not detected in output (Claude may have used other methods)"
           fi
 
           # Verify multiply was added
@@ -209,7 +225,7 @@ jobs:
           # Run Claude with the plugin to add multiply method
           claude --plugin-dir ${{ github.workspace }} \
             -p "Add a multiply method to the Calculator class in calculator.hpp. Only modify calculator.hpp, nothing else." \
-            --allowedTools "Edit,Read,Glob,Grep" \
+            --allowedTools "Edit,Read,Glob,Grep,mcp__repo-map__search_symbols,mcp__repo-map__get_file_symbols" \
             --max-turns 5 \
             2>&1 | tee claude-output.txt
 
@@ -219,6 +235,11 @@ jobs:
           else
             echo "✓ Repo map generated"
             grep -q "Calculator" .claude/repo-map.md && echo "✓ Calculator class found in repo map"
+          fi
+
+          # Verify SQLite database was created
+          if [ -f ".claude/repo-map.db" ]; then
+            echo "✓ SQLite database created"
           fi
 
           # Verify multiply was added
@@ -239,7 +260,7 @@ jobs:
           # Run Claude with the plugin to add multiply method
           claude --plugin-dir ${{ github.workspace }} \
             -p "Add a multiply method to the Calculator impl in src/lib.rs. Only modify src/lib.rs, nothing else." \
-            --allowedTools "Edit,Read,Glob,Grep" \
+            --allowedTools "Edit,Read,Glob,Grep,mcp__repo-map__search_symbols,mcp__repo-map__get_file_symbols" \
             --max-turns 5 \
             2>&1 | tee claude-output.txt
 
@@ -249,6 +270,11 @@ jobs:
           else
             echo "✓ Repo map generated"
             grep -q "Calculator" .claude/repo-map.md && echo "✓ Calculator struct found in repo map"
+          fi
+
+          # Verify SQLite database was created
+          if [ -f ".claude/repo-map.db" ]; then
+            echo "✓ SQLite database created"
           fi
 
           # Verify multiply was added
@@ -266,6 +292,35 @@ jobs:
             cd ..
           fi
 
+      - name: Test MCP symbol search
+        run: |
+          cd test-projects/python-app
+
+          echo "=== Testing MCP symbol search ==="
+
+          # Ask Claude a question that requires understanding the codebase structure
+          # This should encourage use of search_symbols or get_file_symbols
+          claude --plugin-dir ${{ github.workspace }} \
+            -p "What methods does the Calculator class have? Use the repo-map tools to find out, then list them." \
+            --allowedTools "mcp__repo-map__search_symbols,mcp__repo-map__get_file_symbols" \
+            --max-turns 3 \
+            2>&1 | tee mcp-test-output.txt
+
+          # Check if response mentions the methods
+          if grep -qi "add\|subtract\|multiply" mcp-test-output.txt; then
+            echo "✓ Claude found Calculator methods"
+          else
+            echo "⚠ Claude output doesn't mention expected methods"
+            cat mcp-test-output.txt
+          fi
+
+          # Check if MCP tools were used
+          if grep -q "mcp__repo-map" mcp-test-output.txt; then
+            echo "✓ MCP repo-map tools were used"
+          else
+            echo "⚠ MCP tools not detected in output"
+          fi
+
       - name: Summary
         run: |
           echo ""
@@ -273,5 +328,14 @@ jobs:
           echo "✓ Python: Calculator.multiply added and syntax valid"
           echo "✓ C++: Calculator::multiply added"
           echo "✓ Rust: Calculator::multiply added"
+          echo ""
+
+          # Check for MCP usage across all tests
+          if grep -rq "mcp__repo-map" test-projects/*/claude-output.txt test-projects/*/mcp-test-output.txt 2>/dev/null; then
+            echo "✓ MCP tools were used during testing"
+          else
+            echo "⚠ MCP tools may not have been invoked (not a failure)"
+          fi
+
           echo ""
           echo "Plugin successfully integrated with Claude Code!"
