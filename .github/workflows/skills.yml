@@ -9,6 +9,9 @@ on:
 jobs:
   test-skill:
     uses: robtaylor/skills/.github/workflows/skill-ci.yml@add-skill-ci
+    permissions:
+      id-token: write
+      contents: read
     with:
       skill_path: "."
     secrets:
