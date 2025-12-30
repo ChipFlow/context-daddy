@@ -11,5 +11,5 @@ jobs:
     uses: robtaylor/skills/.github/workflows/skill-ci.yml@add-skill-ci
     with:
       skill_path: "."
-      run_api_test: false
-      run_claude_code_test: false
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
