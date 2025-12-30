@@ -252,7 +252,8 @@ jobs:
         run: |
           cd test-project
           # Test that the server can import and initialize
-          uv run python3 << 'EOF'
+          # Use --project .. to find pyproject.toml with MCP dependency
+          uv run --project .. python3 << 'EOF'
           import sys
           sys.path.insert(0, '..')
 
@@ -274,7 +275,8 @@ jobs:
           cd test-project
           PROJECT_ROOT="$(pwd)"
           export PROJECT_ROOT
-          uv run python3 << 'EOF'
+          # Use --project .. to find pyproject.toml with MCP dependency
+          uv run --project .. python3 << 'EOF'
           import os
           import sqlite3
           from pathlib import Path
