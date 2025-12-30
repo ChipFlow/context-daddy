@@ -13,7 +13,11 @@ PROJECT_ROOT="${PWD}"
 CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 REPO_MAP="${CLAUDE_DIR}/repo-map.md"
 PROGRESS_FILE="${CLAUDE_DIR}/repo-map-progress.json"
-LOCK_FILE="${CLAUDE_DIR}/repo-map-cache.lock"
+
+# Check if repo-map process is running (use pgrep, not lock file)
+is_running() {
+    pgrep -f "generate-repo-map.py.*${PROJECT_ROOT}" >/dev/null 2>&1
+}
 
 echo "=== Repo Map Status ==="
 
@@ -41,11 +45,11 @@ print(f'Files: {p.get(\"files_total\", \"?\")} ({p.get(\"files_cached\", 0)} cac
 " 2>/dev/null || true
     fi
 
-    if [[ -f "${LOCK_FILE}" ]]; then
+    if is_running; then
         echo ""
         echo "⏳ Update in progress..."
     fi
-elif [[ -f "${LOCK_FILE}" ]]; then
+elif is_running; then
     echo "Status: Building..."
 
     if [[ -f "${PROGRESS_FILE}" ]]; then

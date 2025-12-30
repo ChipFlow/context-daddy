@@ -37,7 +37,6 @@ if [[ -n "${PIDS}" ]]; then
         sleep 0.2
     fi
 fi
-rm -f "${CLAUDE_DIR}/repo-map-cache.lock"
 
 # Ensure .claude directory exists
 mkdir -p "${CLAUDE_DIR}"
@@ -47,7 +46,6 @@ mkdir -p "${CLAUDE_DIR}"
 uv run "${SCRIPT_DIR}/generate-manifest.py" "${PROJECT_ROOT}" >/dev/null 2>&1 || true
 
 REPO_MAP="${CLAUDE_DIR}/repo-map.md"
-LOCK_FILE="${CLAUDE_DIR}/repo-map-cache.lock"
 CACHE_FILE="${CLAUDE_DIR}/repo-map-cache.json"
 
 # Check cache version - must match CACHE_VERSION in generate-repo-map.py
@@ -62,6 +60,11 @@ fi
 # Update last check timestamp so PreToolUse doesn't immediately re-check
 touch "${CLAUDE_DIR}/.last-cache-check"
 
+# Check if repo-map process is already running (use pgrep, not lock file)
+is_running() {
+    pgrep -f "generate-repo-map.py.*${PROJECT_ROOT}" >/dev/null 2>&1
+}
+
 # Determine repo map status message
 if [[ -f "${REPO_MAP}" ]]; then
     SYMBOL_COUNT=$(grep -c "^\*\*" "${REPO_MAP}" 2>/dev/null || echo "0")
@@ -73,7 +76,7 @@ content = Path('${REPO_MAP}').read_text()
 classes = len(re.findall(r'\*\*[^*]+\*\* \([^)]+\) ↔', content))
 print(classes)
 " 2>/dev/null || echo "0")
-    if [[ -f "${LOCK_FILE}" ]]; then
+    if is_running; then
         STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols (updating in background)"
     elif [[ "${CLASH_COUNT}" -gt 0 ]]; then
         STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols, ${CLASH_COUNT} naming clash(es)"
@@ -81,13 +84,13 @@ print(classes)
         STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols"
     fi
     # Start background update if not already running
-    if [[ ! -f "${LOCK_FILE}" ]]; then
+    if ! is_running; then
         (
             nohup uv run "${SCRIPT_DIR}/generate-repo-map.py" "${PROJECT_ROOT}" \
                 > "${CLAUDE_DIR}/repo-map-build.log" 2>&1 &
         ) &
     fi
-elif [[ -f "${LOCK_FILE}" ]]; then
+elif is_running; then
     STATUS_MSG="[context-tools] Building repo map in background..."
 else
     STATUS_MSG="[context-tools] Starting repo map generation..."

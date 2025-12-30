@@ -14,10 +14,11 @@ if [[ -n "${PIDS}" ]]; then
     echo "${PIDS}" | xargs kill 2>/dev/null || true
     sleep 1
     # Force kill any remaining
-    echo "${PIDS}" | xargs kill -9 2>/dev/null || true
+    PIDS=$(pgrep -f "generate-repo-map.py.*${PROJECT_PATH}" 2>/dev/null || true)
+    if [[ -n "${PIDS}" ]]; then
+        echo "${PIDS}" | xargs kill -9 2>/dev/null || true
+    fi
 fi
-# Always remove lock to ensure clean start
-rm -f ".claude/repo-map-cache.lock"
 
 # Run any cache format migrations (clears cache if incompatible version)
 python3 -c "

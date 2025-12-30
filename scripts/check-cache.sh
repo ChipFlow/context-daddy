@@ -8,18 +8,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PWD}"
 CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 CACHE_FILE="${CLAUDE_DIR}/repo-map-cache.json"
-LOCK_FILE="${CLAUDE_DIR}/repo-map-cache.lock"
 REPO_MAP="${CLAUDE_DIR}/repo-map.md"
 LAST_CHECK="${CLAUDE_DIR}/.last-cache-check"
 
 # Throttle: only check every 30 seconds to avoid slowdown on large codebases
 CHECK_INTERVAL=30
 
-# Skip if already indexing (check lock file AND running processes)
-if [[ -f "${LOCK_FILE}" ]]; then
-    exit 0
-fi
-# Also check for running processes (in case lock file was deleted but process still running)
+# Skip if already indexing (check running processes)
 if pgrep -f "generate-repo-map.py.*${PROJECT_ROOT}" >/dev/null 2>&1; then
     exit 0
 fi

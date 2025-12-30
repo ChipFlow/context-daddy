@@ -11,8 +11,5 @@ if [[ -n "${PIDS}" ]]; then
     echo "${PIDS}" | xargs kill 2>/dev/null || true
 fi
 
-# Clean up lock file
-rm -f "${PROJECT_ROOT}/.claude/repo-map-cache.lock"
-
 # Output valid JSON for hook
 echo '{"continue": true}'
