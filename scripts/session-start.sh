@@ -138,12 +138,19 @@ if [[ -f "${LEARNINGS}" ]]; then
     fi
 fi
 
-# Add repo map summary
-if [[ -f "${REPO_MAP}" ]]; then
+# Add repo map summary and MCP tools info
+DB_FILE="${CLAUDE_DIR}/repo-map.db"
+if [[ -f "${DB_FILE}" ]]; then
+    CONTEXT="${CONTEXT}\n\nMCP tools available for symbol search:"
+    CONTEXT="${CONTEXT}\n- mcp__repo-map__search_symbols: Search symbols by name pattern (e.g., 'get_*', '*Handler')"
+    CONTEXT="${CONTEXT}\n- mcp__repo-map__get_file_symbols: Get all symbols in a file"
+    CONTEXT="${CONTEXT}\nUse these tools when exploring the codebase to find functions, classes, or methods."
+elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
-    if [[ "${CLASH_COUNT}" -gt 0 ]]; then
-        CONTEXT="${CONTEXT}\n${CLASH_COUNT} potential naming clash(es) detected. Use /clash-summary or /resolve-clashes to review."
-    fi
+fi
+
+if [[ -f "${REPO_MAP}" && "${CLASH_COUNT}" -gt 0 ]]; then
+    CONTEXT="${CONTEXT}\n${CLASH_COUNT} potential naming clash(es) detected. Use /clash-summary or /resolve-clashes to review."
 fi
 
 # Output JSON with systemMessage for user display
