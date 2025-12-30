@@ -141,14 +141,13 @@ fi
 # Add repo map summary and MCP tools info
 DB_FILE="${CLAUDE_DIR}/repo-map.db"
 if [[ -f "${DB_FILE}" ]]; then
-    CONTEXT="${CONTEXT}\n\n**PREFER MCP repo-map tools over Grep for code symbol searches:**"
-    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__search_symbols: Search symbols by pattern (e.g., 'get_*', '*Handler')"
-    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__get_file_symbols: Get all symbols in a file"
-    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__get_symbol_content: Get source code of a symbol by name"
+    CONTEXT="${CONTEXT}\n\n**PREFER these MCP tools over Grep/Search for code symbol lookups:**"
+    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__search_symbols: Find functions/classes/methods by pattern (e.g., 'get_*', '*Handler')"
+    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__get_file_symbols: List all symbols in a file"
+    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__get_symbol_content: Get full source code of a symbol by name"
     CONTEXT="${CONTEXT}\n"
-    CONTEXT="${CONTEXT}\nThese MCP tools use a pre-built SQLite index and are significantly faster than Grep"
-    CONTEXT="${CONTEXT}\nfor finding function/class/method definitions. Use them FIRST when searching for"
-    CONTEXT="${CONTEXT}\ncode symbols. Fall back to Grep only for non-symbol text searches."
+    CONTEXT="${CONTEXT}\nThese use a pre-built SQLite index - much faster than Grep for finding definitions."
+    CONTEXT="${CONTEXT}\nUse these FIRST when looking for code symbols. Use Grep only for arbitrary text searches."
 elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
 fi
