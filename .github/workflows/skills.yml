@@ -1,0 +1,60 @@
+name: Build Skills Package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-skills:
+    name: Build and Test Skills Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build skills.zip
+        run: |
+          zip -r skills.zip \
+            .claude-plugin/plugin.json \
+            .claude-plugin/marketplace.json \
+            hooks/hooks.json \
+            scripts/generate-repo-map.py \
+            scripts/generate-manifest.py \
+            scripts/session-start.sh \
+            scripts/check-cache.sh \
+            scripts/precompact.sh \
+            scripts/on-exit.sh \
+            scripts/analyze-memory.py \
+            servers/repo-map-server.py \
+            commands/repo-map.md \
+            commands/manifest.md \
+            commands/learnings.md \
+            commands/clash-summary.md \
+            commands/resolve-clashes.md \
+            commands/debug.md \
+            commands/status.md \
+            templates/learnings.md \
+            README.md \
+            CLAUDE.md \
+            LICENSE
+
+      - name: Verify skills.zip contents
+        run: |
+          echo "Skills package contents:"
+          unzip -l skills.zip
+          echo "---"
+          echo "Package size: $(du -h skills.zip | cut -f1)"
+
+      - name: Test skills package
+        uses: robtaylor/skills@add-skill-ci
+        with:
+          skills-zip: skills.zip
+
+      - name: Upload skills.zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills-package
+          path: skills.zip
+          retention-days: 30
