@@ -20,6 +20,7 @@ import ast
 import hashlib
 import json
 import os
+import sqlite3
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -714,6 +715,49 @@ def analyze_documentation_coverage(symbols: list[Symbol]) -> dict:
     return stats
 
 
+def write_symbols_to_sqlite(symbols: list[Symbol], db_path: Path) -> None:
+    """Write symbols to SQLite database for MCP server queries."""
+    # Write to temp file then rename for atomicity
+    tmp_path = db_path.with_suffix(".tmp")
+
+    conn = sqlite3.connect(tmp_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+
+    # Create table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS symbols (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            signature TEXT,
+            docstring TEXT,
+            file_path TEXT NOT NULL,
+            line_number INTEGER NOT NULL,
+            parent TEXT
+        )
+    """)
+
+    # Create indexes for fast queries
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_name ON symbols(name)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_file ON symbols(file_path)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_kind ON symbols(kind)")
+
+    # Clear existing data and insert new
+    conn.execute("DELETE FROM symbols")
+
+    conn.executemany(
+        """INSERT INTO symbols (name, kind, signature, docstring, file_path, line_number, parent)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        [(s.name, s.kind, s.signature, s.docstring, s.file_path, s.line_number, s.parent) for s in symbols]
+    )
+
+    conn.commit()
+    conn.close()
+
+    # Atomic rename
+    tmp_path.rename(db_path)
+
+
 def format_repo_map(symbols: list[Symbol], similar_classes: list, similar_functions: list, doc_coverage: dict, root: Path) -> str:
     """Format symbols as a hierarchical repo map with analysis."""
     output = [
@@ -1010,6 +1054,10 @@ def main():
 
     # Save final cache state
     cache.save()
+
+    # Write to SQLite database for MCP server queries
+    db_path = claude_dir / "repo-map.db"
+    write_symbols_to_sqlite(all_symbols, db_path)
 
     similar_classes = find_similar_classes(all_symbols)
     similar_functions = find_similar_functions(all_symbols)
