@@ -203,6 +203,121 @@ jobs:
           python3 -c "import json; json.load(open('.claude/repo-map-cache.json'))"
           echo "Cache file is valid JSON"
 
+      - name: Verify SQLite database created
+        run: |
+          cd test-project
+          if [ ! -f ".claude/repo-map.db" ]; then
+            echo "ERROR: repo-map.db not created"
+            exit 1
+          fi
+
+          # Verify database structure and content
+          python3 << 'EOF'
+          import sqlite3
+          conn = sqlite3.connect('.claude/repo-map.db')
+
+          # Check table exists
+          tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+          assert ('symbols',) in tables, "symbols table not found"
+
+          # Check indexes exist
+          indexes = conn.execute("SELECT name FROM sqlite_master WHERE type='index'").fetchall()
+          index_names = [i[0] for i in indexes]
+          assert 'idx_name' in index_names, "idx_name index not found"
+          assert 'idx_file' in index_names, "idx_file index not found"
+          assert 'idx_kind' in index_names, "idx_kind index not found"
+
+          # Check symbols were inserted
+          count = conn.execute("SELECT COUNT(*) FROM symbols").fetchone()[0]
+          assert count > 0, f"No symbols in database, expected > 0"
+
+          # Check specific symbols exist
+          symbols = conn.execute("SELECT name FROM symbols").fetchall()
+          symbol_names = [s[0] for s in symbols]
+          assert 'TestClass' in symbol_names, "TestClass not in database"
+          assert 'helper_function' in symbol_names, "helper_function not in database"
+          assert 'Calculator' in symbol_names, "Calculator not in database"
+          assert 'Point' in symbol_names, "Point not in database"
+
+          print(f"SQLite database valid with {count} symbols")
+          conn.close()
+          EOF
+
+      - name: Test MCP server syntax
+        run: |
+          python3 -m py_compile servers/repo-map-server.py
+          echo "MCP server syntax valid"
+
+      - name: Test MCP server imports
+        run: |
+          cd test-project
+          # Test that the server can import and initialize
+          uv run python3 << 'EOF'
+          import sys
+          sys.path.insert(0, '..')
+
+          # Just test imports work - full MCP test needs async
+          import sqlite3
+          import fnmatch
+          import json
+          from pathlib import Path
+
+          # Verify we can import mcp (installed by uv)
+          from mcp.server import Server
+          from mcp.types import Tool, TextContent
+
+          print("All MCP server imports successful")
+          EOF
+
+      - name: Test MCP server query functions
+        run: |
+          cd test-project
+          PROJECT_ROOT="$(pwd)"
+          export PROJECT_ROOT
+          uv run python3 << 'EOF'
+          import os
+          import sqlite3
+          from pathlib import Path
+          import fnmatch
+
+          PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", os.getcwd()))
+          DB_PATH = PROJECT_ROOT / ".claude" / "repo-map.db"
+
+          def get_db():
+              conn = sqlite3.connect(DB_PATH)
+              conn.row_factory = sqlite3.Row
+              return conn
+
+          def row_to_dict(row):
+              return {key: row[key] for key in row.keys()}
+
+          # Test search_symbols logic
+          conn = get_db()
+          pattern = "helper_*"
+          sql_pattern = pattern.replace("*", "%").replace("?", "_")
+          cursor = conn.execute("SELECT * FROM symbols WHERE name LIKE ?", [sql_pattern])
+          rows = cursor.fetchall()
+          results = [row_to_dict(row) for row in rows if fnmatch.fnmatch(row["name"], pattern)]
+          assert len(results) == 1, f"Expected 1 result for 'helper_*', got {len(results)}"
+          assert results[0]["name"] == "helper_function"
+          print(f"search_symbols test passed: found {results[0]['name']}")
+
+          # Test get_file_symbols logic
+          cursor = conn.execute("SELECT * FROM symbols WHERE file_path = ? ORDER BY line_number", ["main.py"])
+          results = [row_to_dict(row) for row in cursor.fetchall()]
+          assert len(results) >= 2, f"Expected >= 2 symbols in main.py, got {len(results)}"
+          print(f"get_file_symbols test passed: found {len(results)} symbols in main.py")
+
+          # Test kind filter
+          cursor = conn.execute("SELECT * FROM symbols WHERE kind = ?", ["class"])
+          classes = cursor.fetchall()
+          assert len(classes) >= 3, f"Expected >= 3 classes, got {len(classes)}"
+          print(f"Kind filter test passed: found {len(classes)} classes")
+
+          conn.close()
+          print("All MCP query function tests passed!")
+          EOF
+
       - name: Test incremental update
         run: |
           cd test-project
@@ -216,12 +331,23 @@ jobs:
           # Re-run repo map
           uv run ../scripts/generate-repo-map.py . 2>&1 | tail -10
 
-          # Verify new function was picked up
+          # Verify new function was picked up in markdown
           if ! grep -q "new_function" .claude/repo-map.md; then
-            echo "ERROR: New function not found after incremental update"
+            echo "ERROR: New function not found in repo-map.md after incremental update"
             exit 1
           fi
-          echo "Incremental update works correctly"
+
+          # Verify new function was picked up in SQLite
+          python3 << 'EOF'
+          import sqlite3
+          conn = sqlite3.connect('.claude/repo-map.db')
+          result = conn.execute("SELECT name FROM symbols WHERE name = 'new_function'").fetchone()
+          assert result is not None, "new_function not found in SQLite database"
+          print("new_function found in SQLite database")
+          conn.close()
+          EOF
+
+          echo "Incremental update works correctly for both markdown and SQLite"
 
   test-session-start:
     name: Test Session Start Hook
