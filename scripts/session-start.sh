@@ -8,6 +8,36 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PWD}"
 CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 
+# --- Cleanup old plugin versions ---
+# CLAUDE_PLUGIN_ROOT is set by Claude Code and points to the current version
+if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    PLUGIN_CACHE_DIR="$(dirname "${CLAUDE_PLUGIN_ROOT}")"
+    CURRENT_VERSION="$(basename "${CLAUDE_PLUGIN_ROOT}")"
+
+    # Remove old cached versions (keep only current)
+    if [[ -d "${PLUGIN_CACHE_DIR}" ]]; then
+        for OLD_VERSION in "${PLUGIN_CACHE_DIR}"/*; do
+            if [[ -d "${OLD_VERSION}" && "$(basename "${OLD_VERSION}")" != "${CURRENT_VERSION}" ]]; then
+                rm -rf "${OLD_VERSION}" 2>/dev/null || true
+            fi
+        done
+    fi
+fi
+
+# --- Kill stale indexing process ---
+LOCK_FILE="${CLAUDE_DIR}/repo-map-cache.lock"
+if [[ -f "${LOCK_FILE}" ]]; then
+    OLD_PID=$(cat "${LOCK_FILE}" 2>/dev/null || true)
+    if [[ -n "${OLD_PID}" ]]; then
+        # Check if process is still running
+        if kill -0 "${OLD_PID}" 2>/dev/null; then
+            # Kill it - we'll restart fresh if needed
+            kill "${OLD_PID}" 2>/dev/null || true
+        fi
+        rm -f "${LOCK_FILE}"
+    fi
+fi
+
 # Ensure .claude directory exists
 mkdir -p "${CLAUDE_DIR}"
 
