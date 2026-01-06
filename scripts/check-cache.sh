@@ -37,7 +37,7 @@ NEEDS_REINDEX=false
 REASON=""
 
 # Expected cache version - must match CACHE_VERSION in generate-repo-map.py
-EXPECTED_CACHE_VERSION=2
+EXPECTED_CACHE_VERSION=3
 
 # Check 1: Cache version mismatch
 if [[ -f "${CACHE_FILE}" ]]; then

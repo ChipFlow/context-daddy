@@ -1,16 +1,12 @@
 [project]
 name = "claude-context-tools"
-version = "0.5.0"
+version = "0.6.0"
 description = "Context management tools for Claude Code: project manifest, repo map with duplicate detection, and learnings system"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0,<2.0.0",
-]
-
-[project.optional-dependencies]
-repo-map = [
     "tree-sitter>=0.23.0",
     "tree-sitter-cpp>=0.23.0",
     "tree-sitter-rust>=0.23.0",

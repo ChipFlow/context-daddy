@@ -127,14 +127,10 @@ wheels = [
 
 [[package]]
 name = "claude-context-tools"
-version = "0.5.0"
+version = "0.6.0"
 source = { virtual = "." }
 dependencies = [
     { name = "mcp" },
-]
-
-[package.optional-dependencies]
-repo-map = [
     { name = "tree-sitter" },
     { name = "tree-sitter-cpp" },
     { name = "tree-sitter-rust" },
@@ -143,11 +139,10 @@ repo-map = [
 [package.metadata]
 requires-dist = [
     { name = "mcp", specifier = ">=1.0.0,<2.0.0" },
-    { name = "tree-sitter", marker = "extra == 'repo-map'", specifier = ">=0.23.0" },
-    { name = "tree-sitter-cpp", marker = "extra == 'repo-map'", specifier = ">=0.23.0" },
-    { name = "tree-sitter-rust", marker = "extra == 'repo-map'", specifier = ">=0.23.0" },
+    { name = "tree-sitter", specifier = ">=0.23.0" },
+    { name = "tree-sitter-cpp", specifier = ">=0.23.0" },
+    { name = "tree-sitter-rust", specifier = ">=0.23.0" },
 ]
-provides-extras = ["repo-map"]
 
 [[package]]
 name = "click"
