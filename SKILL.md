@@ -12,16 +12,34 @@ This skill provides intelligent context management for large codebases through:
 - **MCP Symbol Server**: Enables fast symbol search via `search_symbols` and `get_file_symbols` tools
 - **Automatic Indexing**: Background incremental updates as files change
 
-## Using MCP Tools
+## Using MCP Tools - PRIMARY CODE EXPLORATION METHOD
 
-**IMPORTANT**: Before attempting to use MCP tools (mcp__plugin_context-tools_repo-map__*), check if `.claude/repo-map.db` exists:
+**CRITICAL**: Use repo-map tools as your FIRST approach when you need to:
+- **Find a function/class/method by name or pattern** → `search_symbols`
+- **Understand how to use a function** (parameters, return type) → `search_symbols` or `get_symbol_content`
+- **Get the source code of a specific function/class** → `get_symbol_content`
+- **See all code in a file** → `get_file_symbols`
+- **Discover what functionality exists** in the codebase → `search_symbols` with patterns
+
+**Do NOT use Grep or Bash for these tasks** - the repo-map tools are:
+- **Faster** (pre-indexed SQLite database)
+- **More accurate** (AST-parsed, not regex)
+- **More informative** (includes signatures, docstrings, line ranges)
+
+**When to use Grep instead:**
+- Searching for string literals, comments, or arbitrary text
+- Searching in non-code files (markdown, config, etc.)
+- Cross-file text pattern searches
+
+**Tool availability check:**
+Before attempting to use MCP tools (mcp__plugin_context-tools_repo-map__*), check if `.claude/repo-map.db` exists:
 - If YES: Try the MCP tool. If it fails (not available), use sqlite3 fallback.
 - If NO: The project hasn't been indexed yet. Either wait for indexing or run `/context-tools:repo-map` to generate it.
 
-**Preferred approach when MCP tools are available:**
+**Fallback order:**
 1. Try MCP tool first
-2. If tool not found, explain that session needs restart to load MCP server
-3. Use sqlite3 fallback to still answer the question
+2. If tool not found, use sqlite3 fallback to still answer the question
+3. Explain that session needs restart to load MCP server for future use
 
 ## First Time Setup
 
