@@ -44,24 +44,42 @@ Note: Indexing is now handled by the MCP server itself (no PreToolUse hook neede
 
 ### MCP Server (repo-map)
 
-**Tool names (when available):**
+**Database Schema (.claude/repo-map.db):**
+```sql
+symbols table columns:
+- name (TEXT): Symbol name (function/class/method name)
+- kind (TEXT): "function", "class", or "method"
+- signature (TEXT): Full function/method signature with parameters and type hints
+  Examples:
+  - "extract_symbols_from_python(file_path: Path, relative_to: Path) -> list[Symbol]"
+  - "analyze_files(files: list[Path], extractor, language: str, root: Path)"
+- docstring (TEXT): First line of docstring or full docstring
+- file_path (TEXT): Relative path from project root
+- line_number (INTEGER): Start line (1-indexed)
+- end_line_number (INTEGER): End line (1-indexed)
+- parent (TEXT): For methods, the class name
+```
+
+**Available MCP Tools:**
 - `mcp__plugin_context-tools_repo-map__search_symbols` - Search symbols by pattern (supports glob wildcards)
+  - Returns: name, kind, signature, file_path, line_number, docstring, parent
 - `mcp__plugin_context-tools_repo-map__get_file_symbols` - Get all symbols in a specific file
+  - Returns: All symbols with full metadata
 - `mcp__plugin_context-tools_repo-map__get_symbol_content` - Get full source code of a symbol by exact name
+  - Returns: symbol metadata + content (source code text) + location
 - `mcp__plugin_context-tools_repo-map__reindex_repo_map` - Trigger manual reindex
 - `mcp__plugin_context-tools_repo-map__repo_map_status` - Check indexing status and staleness
 
-**When MCP tools are NOT available:**
-- Current session started before plugin was installed/updated
-- User hasn't restarted Claude Code yet
-
-**Fallback behavior:**
-If MCP tools aren't available, use sqlite3 directly:
+**Fallback when MCP tools unavailable:**
+Use sqlite3 directly on `.claude/repo-map.db`:
 ```bash
+# Search symbols
 sqlite3 .claude/repo-map.db "SELECT name, kind, signature, file_path, line_number FROM symbols WHERE name LIKE 'pattern%' LIMIT 20"
-```
 
-Or tell the user to restart Claude Code to load the MCP server.
+# Get symbol with source
+sqlite3 .claude/repo-map.db "SELECT * FROM symbols WHERE name = 'function_name'"
+# Then read file_path lines line_number to end_line_number
+```
 
 ### Slash Commands
 - `/context-tools:repo-map` - Regenerate repository map
