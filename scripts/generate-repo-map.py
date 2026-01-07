@@ -24,6 +24,7 @@ import sqlite3
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass, asdict
 from difflib import SequenceMatcher
@@ -36,7 +37,7 @@ from tree_sitter import Language, Parser, Node
 
 
 # Cache format version - bump when Symbol structure or file selection changes
-CACHE_VERSION = 3
+CACHE_VERSION = 4
 
 # Default to 50% of available cores for parsing, max 8 workers
 # Using threads (not processes) to avoid memory duplication
@@ -728,6 +729,12 @@ def analyze_documentation_coverage(symbols: list[Symbol]) -> dict:
     return stats
 
 
+def set_metadata(conn: sqlite3.Connection, key: str, value: str) -> None:
+    """Set a metadata key-value pair."""
+    conn.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)", [key, value])
+    conn.commit()
+
+
 def write_symbols_to_sqlite(symbols: list[Symbol], db_path: Path) -> None:
     """Write symbols to SQLite database for MCP server queries."""
     # Write to temp file then rename for atomicity
@@ -736,7 +743,15 @@ def write_symbols_to_sqlite(symbols: list[Symbol], db_path: Path) -> None:
     conn = sqlite3.connect(tmp_path)
     conn.execute("PRAGMA journal_mode=WAL")
 
-    # Create table
+    # Create metadata table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
+
+    # Create symbols table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS symbols (
             id INTEGER PRIMARY KEY,
@@ -764,6 +779,11 @@ def write_symbols_to_sqlite(symbols: list[Symbol], db_path: Path) -> None:
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         [(s.name, s.kind, s.signature, s.docstring, s.file_path, s.line_number, s.end_line_number, s.parent) for s in symbols]
     )
+
+    # Set metadata to indicate successful indexing completion
+    set_metadata(conn, 'status', 'completed')
+    set_metadata(conn, 'last_indexed', datetime.now().isoformat())
+    set_metadata(conn, 'symbol_count', str(len(symbols)))
 
     conn.commit()
     conn.close()
@@ -947,183 +967,219 @@ def main():
             except ValueError:
                 pass
 
-    # Find all source files
-    python_files = find_python_files(root)
-    cpp_files = find_cpp_files(root)
-    rust_files = find_rust_files(root)
-
-    total_files = len(python_files) + len(cpp_files) + len(rust_files)
-    if total_files == 0:
-        print(f"No source files found in {root}")
-        return
-
-    # Load symbol cache
+    # Ensure .claude directory exists and set indexing status
     claude_dir = root / ".claude"
-    cache = SymbolCache(claude_dir / "repo-map-cache.json")
+    claude_dir.mkdir(exist_ok=True)
+    db_path = claude_dir / "repo-map.db"
 
-    # First pass: check cache and categorize files
-    all_symbols = []
-    all_rel_paths = set()
-    files_to_parse = []  # (file_path_str, root_str, language)
+    # Set status to 'indexing' at start - create temp DB if needed
+    if db_path.exists():
+        # Update existing DB
+        conn = sqlite3.connect(db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
+        set_metadata(conn, 'status', 'indexing')
+        set_metadata(conn, 'index_start_time', datetime.now().isoformat())
+        conn.close()
 
-    # Check Python files
-    for file_path in python_files:
-        rel_path = str(file_path.relative_to(root))
-        all_rel_paths.add(rel_path)
-        symbols, was_cached = cache.get_symbols(file_path, rel_path)
-        if was_cached:
-            all_symbols.extend(symbols)
-        else:
-            files_to_parse.append((str(file_path), str(root), "python"))
+    try:
+        # Find all source files
+        python_files = find_python_files(root)
+        cpp_files = find_cpp_files(root)
+        rust_files = find_rust_files(root)
 
-    # Check C++ files
-    for file_path in cpp_files:
-        rel_path = str(file_path.relative_to(root))
-        all_rel_paths.add(rel_path)
-        symbols, was_cached = cache.get_symbols(file_path, rel_path)
-        if was_cached:
-            all_symbols.extend(symbols)
-        else:
-            files_to_parse.append((str(file_path), str(root), "cpp"))
+        total_files = len(python_files) + len(cpp_files) + len(rust_files)
+        if total_files == 0:
+            print(f"No source files found in {root}")
+            return
 
-    # Check Rust files
-    for file_path in rust_files:
-        rel_path = str(file_path.relative_to(root))
-        all_rel_paths.add(rel_path)
-        symbols, was_cached = cache.get_symbols(file_path, rel_path)
-        if was_cached:
-            all_symbols.extend(symbols)
-        else:
-            files_to_parse.append((str(file_path), str(root), "rust"))
+        # Load symbol cache
+        cache = SymbolCache(claude_dir / "repo-map-cache.json")
 
-    cached_count = total_files - len(files_to_parse)
-    parsed_count = len(files_to_parse)
+        # First pass: check cache and categorize files
+        all_symbols = []
+        all_rel_paths = set()
+        files_to_parse = []  # (file_path_str, root_str, language)
 
-    # Progress file for status updates
-    progress_path = claude_dir / "repo-map-progress.json"
+        # Check Python files
+        for file_path in python_files:
+            rel_path = str(file_path.relative_to(root))
+            all_rel_paths.add(rel_path)
+            symbols, was_cached = cache.get_symbols(file_path, rel_path)
+            if was_cached:
+                all_symbols.extend(symbols)
+            else:
+                files_to_parse.append((str(file_path), str(root), "python"))
 
-    def update_progress(status: str, completed: int = 0, total: int = 0, symbols: int = 0):
-        """Write progress update to file."""
+        # Check C++ files
+        for file_path in cpp_files:
+            rel_path = str(file_path.relative_to(root))
+            all_rel_paths.add(rel_path)
+            symbols, was_cached = cache.get_symbols(file_path, rel_path)
+            if was_cached:
+                all_symbols.extend(symbols)
+            else:
+                files_to_parse.append((str(file_path), str(root), "cpp"))
+
+        # Check Rust files
+        for file_path in rust_files:
+            rel_path = str(file_path.relative_to(root))
+            all_rel_paths.add(rel_path)
+            symbols, was_cached = cache.get_symbols(file_path, rel_path)
+            if was_cached:
+                all_symbols.extend(symbols)
+            else:
+                files_to_parse.append((str(file_path), str(root), "rust"))
+
+        cached_count = total_files - len(files_to_parse)
+        parsed_count = len(files_to_parse)
+
+        # Progress file for status updates
+        progress_path = claude_dir / "repo-map-progress.json"
+
+        def update_progress(status: str, completed: int = 0, total: int = 0, symbols: int = 0):
+            """Write progress update to file."""
+            progress_data = {
+                "status": status,
+                "files_total": total_files,
+                "files_cached": cached_count,
+                "files_to_parse": parsed_count,
+                "files_parsed": completed,
+                "symbols_found": symbols,
+                "timestamp": time.time(),
+            }
+            try:
+                progress_path.write_text(json.dumps(progress_data))
+            except IOError:
+                pass
+
+        # Parallel parse uncached files
+        if files_to_parse:
+            num_workers = get_worker_count(workers_percent)
+            # Use at most as many workers as files to parse
+            num_workers = min(num_workers, len(files_to_parse))
+
+            update_progress("parsing", 0, len(files_to_parse), len(all_symbols))
+
+            # Calculate update interval for ~10% progress updates
+            update_interval = max(1, len(files_to_parse) // 20)  # Update ~20 times = every 5%
+
+            if num_workers > 1 and len(files_to_parse) > 10:
+                # Parallel parsing with threads (shares memory, safe for large codebases)
+                print(f"Parsing {len(files_to_parse)} files with {num_workers} threads...")
+                with ThreadPoolExecutor(max_workers=num_workers) as executor:
+                    futures = {executor.submit(parse_file_worker, args): args for args in files_to_parse}
+                    completed = 0
+                    for future in as_completed(futures):
+                        try:
+                            rel_path, mtime, content_hash, symbol_dicts, lang = future.result()
+                            symbols = [Symbol.from_dict(d) for d in symbol_dicts]
+                            all_symbols.extend(symbols)
+                            if mtime > 0:  # Valid result
+                                cache.update(rel_path, mtime, content_hash, symbols)
+                            completed += 1
+                            if completed % update_interval == 0 or completed == len(files_to_parse):
+                                cache.save_if_needed()
+                                update_progress("parsing", completed, len(files_to_parse), len(all_symbols))
+                                print(f"  Parsed {completed}/{len(files_to_parse)} files...")
+                        except Exception as e:
+                            print(f"  Error parsing file: {e}")
+            else:
+                # Sequential parsing for small number of files
+                completed = 0
+                for args in files_to_parse:
+                    rel_path, mtime, content_hash, symbol_dicts, lang = parse_file_worker(args)
+                    symbols = [Symbol.from_dict(d) for d in symbol_dicts]
+                    all_symbols.extend(symbols)
+                    if mtime > 0:
+                        cache.update(rel_path, mtime, content_hash, symbols)
+                    cache.save_if_needed()
+                    completed += 1
+                    if completed % update_interval == 0 or completed == len(files_to_parse):
+                        update_progress("parsing", completed, len(files_to_parse), len(all_symbols))
+
+        # Remove deleted files from cache
+        cache.remove_stale(all_rel_paths)
+
+        # Save final cache state
+        cache.save()
+
+        # Write to SQLite database for MCP server queries
+        write_symbols_to_sqlite(all_symbols, db_path)
+
+        similar_classes = find_similar_classes(all_symbols)
+        similar_functions = find_similar_functions(all_symbols)
+        doc_coverage = analyze_documentation_coverage(all_symbols)
+
+        repo_map = format_repo_map(all_symbols, similar_classes, similar_functions, doc_coverage, root)
+
+        claude_dir.mkdir(exist_ok=True)
+
+        # Write to .in-progress first, then rename atomically
+        in_progress_path = claude_dir / "repo-map.md.in-progress"
+        final_path = claude_dir / "repo-map.md"
+        in_progress_path.write_text(repo_map)
+        in_progress_path.rename(final_path)
+
+        # Write final progress status
+        progress_path = claude_dir / "repo-map-progress.json"
         progress_data = {
-            "status": status,
+            "status": "complete",
             "files_total": total_files,
             "files_cached": cached_count,
-            "files_to_parse": parsed_count,
-            "files_parsed": completed,
-            "symbols_found": symbols,
+            "files_parsed": parsed_count,
+            "symbols_found": len(all_symbols),
             "timestamp": time.time(),
         }
-        try:
-            progress_path.write_text(json.dumps(progress_data))
-        except IOError:
-            pass
+        progress_path.write_text(json.dumps(progress_data))
 
-    # Parallel parse uncached files
-    if files_to_parse:
-        num_workers = get_worker_count(workers_percent)
-        # Use at most as many workers as files to parse
-        num_workers = min(num_workers, len(files_to_parse))
+        print(repo_map)
+        print("\n---")
+        print(f"Repo map saved to: {claude_dir / 'repo-map.md'}")
 
-        update_progress("parsing", 0, len(files_to_parse), len(all_symbols))
+        # Show file counts by language
+        file_counts = []
+        if python_files:
+            file_counts.append(f"{len(python_files)} Python")
+        if cpp_files:
+            file_counts.append(f"{len(cpp_files)} C++")
+        if rust_files:
+            file_counts.append(f"{len(rust_files)} Rust")
+        print(f"Files: {total_files} ({', '.join(file_counts)})")
+        print(f"Cache: {cached_count} cached, {parsed_count} parsed")
 
-        # Calculate update interval for ~10% progress updates
-        update_interval = max(1, len(files_to_parse) // 20)  # Update ~20 times = every 5%
+        print(f"Symbols found: {len(all_symbols)}")
+        if similar_classes:
+            print(f"Similar classes found: {len(similar_classes)}")
+        if similar_functions:
+            print(f"Similar functions found: {len(similar_functions)}")
 
-        if num_workers > 1 and len(files_to_parse) > 10:
-            # Parallel parsing with threads (shares memory, safe for large codebases)
-            print(f"Parsing {len(files_to_parse)} files with {num_workers} threads...")
-            with ThreadPoolExecutor(max_workers=num_workers) as executor:
-                futures = {executor.submit(parse_file_worker, args): args for args in files_to_parse}
-                completed = 0
-                for future in as_completed(futures):
-                    try:
-                        rel_path, mtime, content_hash, symbol_dicts, lang = future.result()
-                        symbols = [Symbol.from_dict(d) for d in symbol_dicts]
-                        all_symbols.extend(symbols)
-                        if mtime > 0:  # Valid result
-                            cache.update(rel_path, mtime, content_hash, symbols)
-                        completed += 1
-                        if completed % update_interval == 0 or completed == len(files_to_parse):
-                            cache.save_if_needed()
-                            update_progress("parsing", completed, len(files_to_parse), len(all_symbols))
-                            print(f"  Parsed {completed}/{len(files_to_parse)} files...")
-                    except Exception as e:
-                        print(f"  Error parsing file: {e}")
-        else:
-            # Sequential parsing for small number of files
-            completed = 0
-            for args in files_to_parse:
-                rel_path, mtime, content_hash, symbol_dicts, lang = parse_file_worker(args)
-                symbols = [Symbol.from_dict(d) for d in symbol_dicts]
-                all_symbols.extend(symbols)
-                if mtime > 0:
-                    cache.update(rel_path, mtime, content_hash, symbols)
-                cache.save_if_needed()
-                completed += 1
-                if completed % update_interval == 0 or completed == len(files_to_parse):
-                    update_progress("parsing", completed, len(files_to_parse), len(all_symbols))
+        for kind in ["classes", "functions", "methods"]:
+            stats = doc_coverage[kind]
+            if stats["total"] > 0:
+                print(f"{kind.title()} documented: {stats['documented']}/{stats['total']} ({stats['documented']/stats['total']*100:.0f}%)")
 
-    # Remove deleted files from cache
-    cache.remove_stale(all_rel_paths)
-
-    # Save final cache state
-    cache.save()
-
-    # Write to SQLite database for MCP server queries
-    db_path = claude_dir / "repo-map.db"
-    write_symbols_to_sqlite(all_symbols, db_path)
-
-    similar_classes = find_similar_classes(all_symbols)
-    similar_functions = find_similar_functions(all_symbols)
-    doc_coverage = analyze_documentation_coverage(all_symbols)
-
-    repo_map = format_repo_map(all_symbols, similar_classes, similar_functions, doc_coverage, root)
-
-    claude_dir.mkdir(exist_ok=True)
-
-    # Write to .in-progress first, then rename atomically
-    in_progress_path = claude_dir / "repo-map.md.in-progress"
-    final_path = claude_dir / "repo-map.md"
-    in_progress_path.write_text(repo_map)
-    in_progress_path.rename(final_path)
-
-    # Write final progress status
-    progress_path = claude_dir / "repo-map-progress.json"
-    progress_data = {
-        "status": "complete",
-        "files_total": total_files,
-        "files_cached": cached_count,
-        "files_parsed": parsed_count,
-        "symbols_found": len(all_symbols),
-        "timestamp": time.time(),
-    }
-    progress_path.write_text(json.dumps(progress_data))
-
-    print(repo_map)
-    print("\n---")
-    print(f"Repo map saved to: {claude_dir / 'repo-map.md'}")
-
-    # Show file counts by language
-    file_counts = []
-    if python_files:
-        file_counts.append(f"{len(python_files)} Python")
-    if cpp_files:
-        file_counts.append(f"{len(cpp_files)} C++")
-    if rust_files:
-        file_counts.append(f"{len(rust_files)} Rust")
-    print(f"Files: {total_files} ({', '.join(file_counts)})")
-    print(f"Cache: {cached_count} cached, {parsed_count} parsed")
-
-    print(f"Symbols found: {len(all_symbols)}")
-    if similar_classes:
-        print(f"Similar classes found: {len(similar_classes)}")
-    if similar_functions:
-        print(f"Similar functions found: {len(similar_functions)}")
-
-    for kind in ["classes", "functions", "methods"]:
-        stats = doc_coverage[kind]
-        if stats["total"] > 0:
-            print(f"{kind.title()} documented: {stats['documented']}/{stats['total']} ({stats['documented']/stats['total']*100:.0f}%)")
+    except Exception as e:
+        # Set status to 'failed' on error
+        if db_path.exists():
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS metadata (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NOT NULL
+                    )
+                """)
+                set_metadata(conn, 'status', 'failed')
+                set_metadata(conn, 'error_message', str(e))
+                conn.close()
+            except Exception:
+                pass  # Ignore errors when setting error status
+        raise  # Re-raise the exception
 
 
 if __name__ == "__main__":

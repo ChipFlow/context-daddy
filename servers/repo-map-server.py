@@ -25,6 +25,7 @@ import sqlite3
 import sys
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 
 from mcp.server import Server
@@ -85,6 +86,41 @@ def get_db() -> sqlite3.Connection:
 def row_to_dict(row: sqlite3.Row) -> dict:
     """Convert a sqlite3.Row to a dictionary."""
     return {key: row[key] for key in row.keys()}
+
+
+def check_indexing_watchdog():
+    """Check if indexing is stuck and reset if needed."""
+    if not DB_PATH.exists():
+        return
+
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=5.0)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.execute("SELECT key, value FROM metadata")
+        metadata = {row["key"]: row["value"] for row in cursor.fetchall()}
+
+        status = metadata.get("status")
+        if status == "indexing":
+            # Check how long it's been indexing
+            start_time_str = metadata.get("index_start_time")
+            if start_time_str:
+                try:
+                    start_time = datetime.fromisoformat(start_time_str)
+                    elapsed = (datetime.now() - start_time).total_seconds()
+
+                    # If indexing for > 10 minutes, assume it crashed
+                    if elapsed > 600:
+                        logger.warning(f"Indexing stuck for {elapsed}s, resetting status")
+                        conn.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)", ["status", "failed"])
+                        conn.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                                   ["error_message", f"Indexing hung/crashed after {elapsed}s"])
+                        conn.commit()
+                except ValueError:
+                    pass  # Invalid timestamp format
+
+        conn.close()
+    except Exception as e:
+        logger.error(f"Watchdog check failed: {e}")
 
 
 def is_stale() -> tuple[bool, str]:
@@ -340,12 +376,70 @@ async def list_tools() -> list[Tool]:
                 "properties": {}
             }
         ),
+        Tool(
+            name="wait_for_index",
+            description="Wait for indexing to complete. Use before other tools if you suspect indexing is in progress.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "timeout_seconds": {
+                        "type": "integer",
+                        "default": 60,
+                        "description": "How long to wait (default: 60)"
+                    }
+                }
+            }
+        ),
     ]
+
+
+async def wait_for_indexing(timeout_seconds: int = 60) -> tuple[bool, str]:
+    """
+    Wait for indexing to complete.
+    Returns (success, message).
+    """
+    start = time.time()
+    while time.time() - start < timeout_seconds:
+        status = repo_map_status()
+
+        if status.get("index_status") == "completed":
+            return True, "indexing completed"
+
+        if status.get("index_status") == "failed":
+            error = status.get("error", "unknown error")
+            return False, f"indexing failed: {error}"
+
+        await asyncio.sleep(1)  # Poll every second
+
+    return False, "timeout waiting for indexing"
 
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """Handle tool calls."""
+    # Auto-wait for indexing if needed
+    if name not in ["repo_map_status", "reindex_repo_map", "wait_for_index"]:
+        try:
+            if DB_PATH.exists():
+                conn = sqlite3.connect(DB_PATH, timeout=5.0)
+                try:
+                    cursor = conn.execute("SELECT value FROM metadata WHERE key = 'status'")
+                    row = cursor.fetchone()
+                    if row and row[0] == "indexing":
+                        logger.info("Indexing in progress, waiting...")
+                        success, msg = await wait_for_indexing(timeout_seconds=60)
+                        if not success:
+                            return [TextContent(type="text", text=json.dumps({
+                                "error": "Indexing in progress. Please try again in a moment.",
+                                "status": msg
+                            }))]
+                except sqlite3.OperationalError:
+                    pass  # Metadata table doesn't exist yet
+                finally:
+                    conn.close()
+        except Exception:
+            pass  # DB doesn't exist yet
+
     try:
         if name == "search_symbols":
             result = search_symbols(
@@ -364,6 +458,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             result = reindex_repo_map(force=arguments.get("force", False))
         elif name == "repo_map_status":
             result = repo_map_status()
+        elif name == "wait_for_index":
+            timeout = arguments.get("timeout_seconds", 60)
+            success, msg = await wait_for_indexing(timeout_seconds=timeout)
+            result = {"success": success, "message": msg}
         else:
             result = {"error": f"Unknown tool: {name}"}
 
@@ -528,8 +626,42 @@ def repo_map_status() -> dict:
     if DB_PATH.exists():
         try:
             conn = get_db()
-            cursor = conn.execute("SELECT COUNT(*) FROM symbols")
-            status["symbol_count"] = cursor.fetchone()[0]
+
+            # Get metadata
+            try:
+                cursor = conn.execute("SELECT key, value FROM metadata")
+                metadata = {row["key"]: row["value"] for row in cursor.fetchall()}
+
+                status["index_status"] = metadata.get("status", "unknown")
+                status["last_indexed"] = metadata.get("last_indexed")
+
+                symbol_count_str = metadata.get("symbol_count")
+                if symbol_count_str:
+                    status["symbol_count"] = int(symbol_count_str)
+                else:
+                    # Fallback to counting
+                    cursor = conn.execute("SELECT COUNT(*) FROM symbols")
+                    status["symbol_count"] = cursor.fetchone()[0]
+
+                if metadata.get("status") == "indexing":
+                    start_time_str = metadata.get("index_start_time")
+                    if start_time_str:
+                        try:
+                            start_time = datetime.fromisoformat(start_time_str)
+                            elapsed = (datetime.now() - start_time).total_seconds()
+                            status["indexing_duration_seconds"] = int(elapsed)
+                        except ValueError:
+                            pass
+
+                if metadata.get("status") == "failed":
+                    status["error"] = metadata.get("error_message")
+
+            except sqlite3.OperationalError:
+                # Metadata table doesn't exist yet (old DB format)
+                cursor = conn.execute("SELECT COUNT(*) FROM symbols")
+                status["symbol_count"] = cursor.fetchone()[0]
+                status["index_status"] = "unknown (old DB format)"
+
             conn.close()
         except Exception as e:
             status["db_error"] = str(e)
@@ -555,8 +687,24 @@ async def periodic_staleness_check():
             logger.warning(f"Staleness check failed: {e}")
 
 
+async def periodic_watchdog_check():
+    """Run watchdog every 60 seconds to detect hung indexing."""
+    while True:
+        await asyncio.sleep(60)
+        try:
+            check_indexing_watchdog()
+        except Exception as e:
+            logger.warning(f"Watchdog check failed: {e}")
+
+
 async def main():
     """Run the MCP server."""
+    # Run watchdog on startup to detect any stuck state
+    try:
+        check_indexing_watchdog()
+    except Exception as e:
+        logger.warning(f"Startup watchdog check failed: {e}")
+
     # Check if indexing needed on startup
     try:
         stale, reason = is_stale()
@@ -566,8 +714,9 @@ async def main():
     except Exception as e:
         logger.warning(f"Startup staleness check failed: {e}")
 
-    # Start periodic staleness checker
+    # Start periodic checks
     asyncio.create_task(periodic_staleness_check())
+    asyncio.create_task(periodic_watchdog_check())
 
     async with stdio_server() as (read_stream, write_stream):
         await app.run(read_stream, write_stream, app.create_initialization_options())

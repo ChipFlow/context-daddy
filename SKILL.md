@@ -76,17 +76,44 @@ symbols table columns:
 - line_number (INTEGER): Start line (1-indexed)
 - end_line_number (INTEGER): End line (1-indexed)
 - parent (TEXT): For methods, the class name
+
+metadata table (v0.7.0+):
+- key (TEXT PRIMARY KEY): Metadata key
+- value (TEXT): Metadata value
+Keys:
+- 'status': 'idle' | 'indexing' | 'completed' | 'failed'
+- 'index_start_time': ISO8601 timestamp when indexing started
+- 'last_indexed': ISO8601 timestamp when last completed
+- 'symbol_count': Total symbols indexed (string)
+- 'error_message': Error message if status='failed'
 ```
+
+**Indexing Status and Auto-Wait (v0.7.0+):**
+- The MCP server tracks indexing status in the metadata table
+- Tools automatically wait (up to 60s) if indexing is in progress
+- **Watchdog**: Detects hung indexing (>10 minutes) and resets status to 'failed'
+- **First Use**: On first use in a new codebase, indexing starts automatically
+- **Behavior**: Most tools wait for completion, repo_map_status does not (use to check progress)
 
 **Available MCP Tools:**
 - `mcp__plugin_context-tools_repo-map__search_symbols` - Search symbols by pattern (supports glob wildcards)
   - Returns: name, kind, signature, file_path, line_number, docstring, parent
+  - **AUTO-WAIT**: If indexing is in progress, automatically waits up to 60s for completion
 - `mcp__plugin_context-tools_repo-map__get_file_symbols` - Get all symbols in a specific file
   - Returns: All symbols with full metadata
+  - **AUTO-WAIT**: If indexing is in progress, automatically waits up to 60s for completion
 - `mcp__plugin_context-tools_repo-map__get_symbol_content` - Get full source code of a symbol by exact name
   - Returns: symbol metadata + content (source code text) + location
+  - **AUTO-WAIT**: If indexing is in progress, automatically waits up to 60s for completion
 - `mcp__plugin_context-tools_repo-map__reindex_repo_map` - Trigger manual reindex
+  - Does NOT auto-wait (use to force reindex)
 - `mcp__plugin_context-tools_repo-map__repo_map_status` - Check indexing status and staleness
+  - Returns: index_status (idle/indexing/completed/failed), symbol_count, last_indexed, indexing_duration_seconds
+  - Does NOT auto-wait (use to check status)
+- `mcp__plugin_context-tools_repo-map__wait_for_index` - Explicitly wait for indexing to complete
+  - Takes: timeout_seconds (default: 60)
+  - Returns: success (bool), message (str)
+  - Use when you want to wait longer than the default 60s auto-wait timeout
 
 **Fallback when MCP tools unavailable:**
 Use sqlite3 directly on `.claude/repo-map.db`:
