@@ -730,9 +730,8 @@ def analyze_documentation_coverage(symbols: list[Symbol]) -> dict:
 
 
 def set_metadata(conn: sqlite3.Connection, key: str, value: str) -> None:
-    """Set a metadata key-value pair."""
+    """Set a metadata key-value pair. Does NOT commit - caller must commit."""
     conn.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)", [key, value])
-    conn.commit()
 
 
 def write_symbols_to_sqlite(symbols: list[Symbol], db_path: Path) -> None:
@@ -743,7 +742,7 @@ def write_symbols_to_sqlite(symbols: list[Symbol], db_path: Path) -> None:
     conn = sqlite3.connect(tmp_path)
     conn.execute("PRAGMA journal_mode=WAL")
 
-    # Create metadata table
+    # Create tables outside transaction (DDL)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS metadata (
             key TEXT PRIMARY KEY,
@@ -751,7 +750,6 @@ def write_symbols_to_sqlite(symbols: list[Symbol], db_path: Path) -> None:
         )
     """)
 
-    # Create symbols table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS symbols (
             id INTEGER PRIMARY KEY,
@@ -766,29 +764,54 @@ def write_symbols_to_sqlite(symbols: list[Symbol], db_path: Path) -> None:
         )
     """)
 
-    # Create indexes for fast queries
     conn.execute("CREATE INDEX IF NOT EXISTS idx_name ON symbols(name)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_file ON symbols(file_path)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_kind ON symbols(kind)")
 
-    # Clear existing data and insert new
-    conn.execute("DELETE FROM symbols")
+    # Use explicit transaction for all writes - prevents partial state on crash
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        # Clear existing data and insert new
+        conn.execute("DELETE FROM symbols")
 
-    conn.executemany(
-        """INSERT INTO symbols (name, kind, signature, docstring, file_path, line_number, end_line_number, parent)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        [(s.name, s.kind, s.signature, s.docstring, s.file_path, s.line_number, s.end_line_number, s.parent) for s in symbols]
-    )
+        conn.executemany(
+            """INSERT INTO symbols (name, kind, signature, docstring, file_path, line_number, end_line_number, parent)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            [(s.name, s.kind, s.signature, s.docstring, s.file_path, s.line_number, s.end_line_number, s.parent) for s in symbols]
+        )
 
-    # Set metadata to indicate successful indexing completion
-    set_metadata(conn, 'status', 'completed')
-    set_metadata(conn, 'last_indexed', datetime.now().isoformat())
-    set_metadata(conn, 'symbol_count', str(len(symbols)))
+        # Set metadata to indicate successful indexing completion
+        set_metadata(conn, 'status', 'completed')
+        set_metadata(conn, 'last_indexed', datetime.now().isoformat())
+        set_metadata(conn, 'symbol_count', str(len(symbols)))
 
-    conn.commit()
-    conn.close()
+        # Single commit for entire transaction - all or nothing
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
-    # Atomic rename
+    # Safety check: don't overwrite if watchdog marked us as failed
+    # This prevents hung processes from overwriting the database after watchdog intervention
+    if db_path.exists():
+        check_conn = sqlite3.connect(db_path, timeout=1.0)
+        try:
+            cursor = check_conn.execute("SELECT value FROM metadata WHERE key = 'status'")
+            current_status = cursor.fetchone()
+            if current_status and current_status[0] == 'failed':
+                # Watchdog or error handler marked this as failed - don't overwrite
+                check_conn.close()
+                tmp_path.unlink()  # Clean up temp file
+                raise RuntimeError("Indexing was marked as failed by watchdog - aborting to prevent overwrite")
+        except sqlite3.OperationalError:
+            # No metadata table - safe to proceed
+            pass
+        finally:
+            check_conn.close()
+
+    # Atomic rename - only happens if transaction committed successfully and not marked failed
     tmp_path.rename(db_path)
 
 
@@ -984,6 +1007,7 @@ def main():
         """)
         set_metadata(conn, 'status', 'indexing')
         set_metadata(conn, 'index_start_time', datetime.now().isoformat())
+        conn.commit()  # Must commit since set_metadata no longer commits
         conn.close()
 
     try:
@@ -1176,6 +1200,7 @@ def main():
                 """)
                 set_metadata(conn, 'status', 'failed')
                 set_metadata(conn, 'error_message', str(e))
+                conn.commit()  # Must commit since set_metadata no longer commits
                 conn.close()
             except Exception:
                 pass  # Ignore errors when setting error status
