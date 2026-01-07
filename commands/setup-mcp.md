@@ -1,22 +1,24 @@
 ---
 name: setup-mcp
-description: Configure the MCP server for fast symbol lookups across all projects
+description: Troubleshooting guide for MCP server configuration (auto-configures by default)
 ---
 
-# Setup MCP Server
+# MCP Server Troubleshooting
 
-This command configures the repo-map MCP server globally so you have fast symbol search tools available.
+**Note**: The MCP server should auto-configure when you install the plugin and restart Claude Code. This guide is only needed if auto-configuration fails.
 
-## What This Does
+## Check if Already Configured
 
-Adds the `repo-map` MCP server to your Claude Code configuration with these tools:
-- `search_symbols` - Find functions/classes/methods by pattern (e.g., `get_*`, `*Handler`)
-- `get_file_symbols` - List all symbols in a file
-- `get_symbol_content` - Get full source code of a symbol
-- `reindex_repo_map` - Trigger manual reindex
-- `repo_map_status` - Check indexing status
+First, verify the server isn't already running:
+```bash
+claude mcp list
+```
 
-## Steps
+If you see `repo-map: ... - ✓ Connected`, it's already working! No action needed.
+
+## Manual Configuration (If Auto-Config Failed)
+
+If the server isn't listed or shows an error, configure it manually:
 
 1. Get the plugin version:
 ```bash

@@ -62,25 +62,19 @@ For testing or one-off use:
 claude --plugin-dir ./claude-context-tools
 ```
 
-### Configuring the MCP Server (Required)
+### Verify MCP Server is Loaded
 
-The plugin includes MCP server configuration in its manifest, which *should* configure automatically. However, if the MCP server doesn't load after installing and restarting Claude Code, configure it manually:
+After installing the plugin, **restart Claude Code**. The MCP server should auto-configure from the plugin manifest.
 
-**Manual configuration (if auto-config doesn't work):**
-
-```bash
-claude mcp add --scope user --transport stdio repo-map \
-  --env PROJECT_ROOT='${PWD}' \
-  -- uv run ~/.claude/plugins/cache/chipflow-context-tools/context-tools/0.6.1/servers/repo-map-server.py
-```
-
-**Note:** Update the version number (`0.6.1`) when you update the plugin, or use `claude mcp remove repo-map` then re-add.
-
-After configuration, restart Claude Code. Verify with:
+Verify the repo-map server is running:
 ```bash
 claude mcp list
 # Should show: repo-map: ... - ✓ Connected
 ```
+
+Or in a Claude Code session, run `/mcp` to see available MCP servers.
+
+**Troubleshooting**: If the server doesn't load, check that `uv` is installed and accessible in your PATH.
 
 ## Requirements
 

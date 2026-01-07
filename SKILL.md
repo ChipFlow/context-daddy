@@ -14,13 +14,13 @@ This skill provides intelligent context management for large codebases through:
 
 ## First Time Setup
 
-**IMPORTANT**: If the user has just installed this plugin, inform them about MCP server configuration:
+**IMPORTANT**: If the user has just installed this plugin:
 
-> "I see you've installed the context-tools plugin. Note that this plugin requires the MCP server to be configured for fast symbol search tools to work. Would you like me to guide you through the setup, or would you prefer to configure it manually?
+> "I see you've installed the context-tools plugin. The MCP server should auto-configure on restart. After restarting Claude Code, run `/mcp` to verify the `repo-map` server is loaded.
 >
-> If you'd like guidance, I can run `/context-tools:setup-mcp` which will show you the commands to add the repo-map server to your Claude Code configuration."
+> If it doesn't load automatically, let me know and I can help troubleshoot using `/context-tools:setup-mcp`."
 
-If they want guidance, run `/context-tools:setup-mcp` and explain the steps. After configuration, ask them to restart Claude Code.
+The MCP server auto-configures from the plugin manifest. Only if auto-config fails should you run `/context-tools:setup-mcp` for troubleshooting.
 
 ## Included Components
 
