@@ -136,9 +136,9 @@ All loaded into **same address space** - no IPC, no subprocess spawning.
 ❌ Thread synchronization (single-threaded)
 ❌ Subprocess cleanup (no subprocesses)
 
-## Comparison: Before v0.6.0 (Subprocess Model)
+## Architecture Evolution
 
-**Old Architecture (v0.5.x):**
+### v0.5.x: PreToolUse Hook (Deprecated)
 ```
 ┌─────────────────────────────────────────────┐
 │ Claude Code Process                          │
@@ -152,7 +152,7 @@ Problem: Multiple background processes accumulate
 Memory leak: Each subprocess loads tree-sitter (~500MB)
 ```
 
-**New Architecture (v0.6.0+):**
+### v0.6.0 - v0.7.x: Thread-Based Indexing (Deprecated)
 ```
 ┌─────────────────────────────────────────────┐
 │ MCP Server Process (repo-map-server.py)     │
@@ -162,14 +162,36 @@ Memory leak: Each subprocess loads tree-sitter (~500MB)
 
 Solution: Single persistent process
 Memory: One tree-sitter instance
-Watchdog: Can monitor without killing anything
+Problem: Hung tree-sitter freezes entire MCP server
+Watchdog: Can detect but can't kill without killing MCP
+```
+
+### v0.8.0+: Multiprocess Architecture (Current)
+```
+┌─────────────────────────────────────────────┐
+│ MCP Server Process (repo-map-server.py)     │
+│  └─ Spawns subprocess via do_index()       │
+│      └─ tracks _indexing_process: Popen    │
+│      └─ watchdog can SIGKILL subprocess    │
+│                                              │
+│  Subprocess (PID: 12347)                    │
+│  ┌──────────────────────────────────────┐  │
+│  │ generate-repo-map.py                 │  │
+│  │  └─ tree_sitter (in-process)        │  │
+│  └──────────────────────────────────────┘  │
+└─────────────────────────────────────────────┘
+
+Solution: Clean process isolation
+MCP server: Always responsive
+Watchdog: Can kill subprocess without affecting MCP
+SQLite WAL: Handles concurrent read/write safely
 ```
 
 ## Key Architectural Decisions
 
 1. **Tree-sitter is in-process** (native C extension)
-   - Consequence: Hung parser = hung entire process
-   - Mitigation: Watchdog in separate process (MCP server)
+   - Consequence: Hung parser = hung entire indexing subprocess
+   - Mitigation: MCP server spawns subprocess, watchdog can SIGKILL it (v0.8.0+)
 
 2. **Single-threaded parsing** (no ThreadPoolExecutor for tree-sitter)
    - Consequence: Sequential parsing, slower
@@ -182,6 +204,11 @@ Watchdog: Can monitor without killing anything
 4. **Safety check before atomic rename** (v0.7.1)
    - Consequence: Hung process can complete but can't overwrite
    - Benefit: Watchdog decision is final
+
+5. **Multiprocess architecture** (v0.8.0+)
+   - Consequence: MCP server always responsive, even if indexing hangs
+   - Benefit: Watchdog can kill hung subprocess without affecting MCP server
+   - SQLite WAL: Handles concurrent read (MCP) and write (subprocess) safely
 
 ## Testing Recommendations
 
