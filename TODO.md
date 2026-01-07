@@ -1,5 +1,66 @@
 # TODO: Future Enhancements
 
+## Indexing Status and Wait Support
+
+**Status**: High Priority - Needed for reliable tool usage
+
+**Problem**:
+- MCP tools may be called before indexing completes
+- Returns incomplete/empty results on first use
+- No way to check if indexing is done or wait for completion
+
+**Solution**: Add metadata table to track indexing status
+
+### Schema Addition
+
+```sql
+CREATE TABLE metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+-- Status values: 'idle' | 'indexing' | 'completed' | 'failed'
+-- Other keys: last_indexed, symbol_count, file_count, index_start_time, error_message
+```
+
+### Implementation Tasks
+
+1. **generate-repo-map.py**: Update status in metadata table
+   - Set `status='indexing'` at start
+   - Update `file_count` during processing
+   - Set `status='completed'` on success
+   - Set `status='failed'` on error with error_message
+
+2. **MCP Server - Enhanced status tool**:
+   - Return metadata from database
+   - Show indexing progress (files processed)
+   - Calculate indexing duration
+   - Detect stale/hung indexing
+
+3. **MCP Server - Auto-wait behavior**:
+   - Check status before processing tool calls
+   - If `status='indexing'`, poll until complete (60s timeout)
+   - Return helpful error if timeout
+   - Trigger indexing if DB doesn't exist
+
+4. **New MCP tool**: `wait_for_index(timeout_seconds=60)`
+   - Explicitly wait for indexing to complete
+   - Return progress updates
+   - Useful for large codebases
+
+### Benefits
+- Tools "just work" even on first use
+- Users don't get confusing empty results
+- Can show progress during long indexing
+- Can detect and recover from hung indexing
+
+### Migration
+- Bump CACHE_VERSION to 4
+- Create metadata table if not exists
+- Set initial status based on symbol count
+
+---
+
 ## String Literals and Comments Indexing
 
 **Status**: Planned for future release
