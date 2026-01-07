@@ -64,9 +64,37 @@ DB_PATH = CLAUDE_DIR / "repo-map.db"
 CACHE_PATH = CLAUDE_DIR / "repo-map-cache.json"
 STALENESS_CHECK_INTERVAL = 60  # seconds between automatic staleness checks
 
-# Logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Logging setup with rotating file handler
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Console handler (stderr)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+logger.addHandler(console_handler)
+
+# File handler (rotating log)
+try:
+    from logging.handlers import RotatingFileHandler
+    log_dir = CLAUDE_DIR / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "repo-map-server.log"
+
+    # 1MB per file, keep 3 backups (3MB total)
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=1024 * 1024,  # 1MB
+        backupCount=3
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s - %(levelname)s - [%(funcName)s] %(message)s"
+    ))
+    logger.addHandler(file_handler)
+    logger.info(f"Logging to {log_file}")
+except Exception as e:
+    logger.warning(f"Failed to setup file logging: {e}")
 
 app = Server("context-tools-repo-map")
 
@@ -419,6 +447,8 @@ async def wait_for_indexing(timeout_seconds: int = 60) -> tuple[bool, str]:
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """Handle tool calls."""
+    logger.info(f"Tool called: {name} with args: {arguments}")
+
     # Auto-wait for indexing if needed
     if name not in ["repo_map_status", "reindex_repo_map", "wait_for_index"]:
         try:
@@ -466,10 +496,20 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             result = {"success": success, "message": msg}
         else:
             result = {"error": f"Unknown tool: {name}"}
+            logger.error(f"Unknown tool: {name}")
+
+        # Log result summary
+        if isinstance(result, dict) and "error" in result:
+            logger.warning(f"Tool {name} returned error: {result.get('error')}")
+        elif isinstance(result, list):
+            logger.info(f"Tool {name} returned {len(result)} results")
+        else:
+            logger.info(f"Tool {name} completed successfully")
 
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except FileNotFoundError as e:
         # DB doesn't exist - trigger indexing
+        logger.info(f"DB not found, triggering indexing for tool {name}")
         stale, reason = is_stale()
         is_indexing = _indexing_process is not None and _indexing_process.poll() is None
         if stale and not is_indexing:
@@ -479,6 +519,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             "status": "indexing started in background" if not is_indexing else "indexing in progress"
         }))]
     except Exception as e:
+        logger.exception(f"Tool {name} failed with exception")
         return [TextContent(type="text", text=json.dumps({"error": f"Tool error: {e}"}))]
 
 
@@ -707,6 +748,12 @@ async def periodic_watchdog_check():
 
 async def main():
     """Run the MCP server."""
+    logger.info("=" * 60)
+    logger.info(f"MCP Server starting for project: {PROJECT_ROOT}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info(f"Python: {sys.version}")
+    logger.info("=" * 60)
+
     # Run watchdog on startup to detect any stuck state
     try:
         check_subprocess_exit_status()
@@ -727,8 +774,16 @@ async def main():
     asyncio.create_task(periodic_staleness_check())
     asyncio.create_task(periodic_watchdog_check())
 
-    async with stdio_server() as (read_stream, write_stream):
-        await app.run(read_stream, write_stream, app.create_initialization_options())
+    logger.info("MCP Server ready, waiting for tool calls...")
+
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            await app.run(read_stream, write_stream, app.create_initialization_options())
+    except Exception as e:
+        logger.exception("MCP Server error")
+        raise
+    finally:
+        logger.info("MCP Server shutting down")
 
 
 if __name__ == "__main__":

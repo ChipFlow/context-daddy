@@ -156,5 +156,10 @@ Keys:
 **Optional (created manually):**
 - `.claude/learnings.md` - Project-specific learnings and discoveries
 
-**Hook outputs (logged to .claude/logs/):**
-- Session start hook outputs are logged for debugging
+**Logs:**
+- `.claude/logs/repo-map-server.log` - MCP server rotating log (1MB per file, 3 backups)
+  - Tool calls and results
+  - Indexing events and performance
+  - Watchdog actions and resource limit violations
+  - Server startup/shutdown
+- Session start hook outputs are also logged for debugging
