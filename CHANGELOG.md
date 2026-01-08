@@ -5,6 +5,13 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - 2026-01-08
+
+### Changed
+- **Session start context**: Embedded SKILL.md guidance directly in session-start.sh additionalContext
+- Claude now receives dynamic directory support and restart requirement instructions at session start
+- Alternative approach since plugin manifest doesn't support automatic context loading via skills field
+
 ## [0.8.2] - 2026-01-08
 
 ### Fixed

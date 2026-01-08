@@ -93,9 +93,19 @@ if [[ -f "${DB_FILE}" ]]; then
     CONTEXT="${CONTEXT}\n"
     CONTEXT="${CONTEXT}\nThese use a pre-built SQLite index - much faster than Grep for finding definitions."
     CONTEXT="${CONTEXT}\nUse these FIRST when looking for code symbols. Use Grep only for arbitrary text searches."
+    CONTEXT="${CONTEXT}\n"
+    CONTEXT="${CONTEXT}\n**Dynamic Directory Support (v0.8.0+):** MCP tools automatically adapt to current working directory."
+    CONTEXT="${CONTEXT}\n- 'cd /other/project' then use MCP tools → queries /other/project/.claude/repo-map.db"
+    CONTEXT="${CONTEXT}\n- No restart needed when switching projects!"
+    CONTEXT="${CONTEXT}\n- Each project maintains its own index"
 elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
 fi
+
+# Add plugin usage guidance
+CONTEXT="${CONTEXT}\n\n**After plugin install/update:** You MUST restart this session for MCP tools to work."
+CONTEXT="${CONTEXT}\n- Exit (Ctrl+C) then 'claude continue'"
+CONTEXT="${CONTEXT}\n- MCP servers only reload on session restart"
 
 # Output JSON with systemMessage for user display
 STATUS_MSG_ESCAPED=$(echo -n "$STATUS_MSG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | sed 's/^"//;s/"$//')
