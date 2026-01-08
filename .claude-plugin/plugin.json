@@ -1,19 +1,12 @@
 {
   "name": "context-tools",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Context management tools for Claude Code: project manifest, repo map with duplicate detection, and learnings system",
   "author": {
     "name": "Robert Taylor"
   },
   "keywords": ["context", "documentation", "repo-map", "duplicate-detection", "learnings"],
   "repository": "https://github.com/chipflow/claude-context-tools",
-  "skills": {
-    "context-tools-usage": {
-      "name": "Context Tools Usage Guide",
-      "description": "Instructions for using context-tools MCP server and understanding its behavior",
-      "instructionsPath": "SKILL.md"
-    }
-  },
   "mcpServers": {
     "repo-map": {
       "command": "uv",

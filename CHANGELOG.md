@@ -5,11 +5,16 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.1] - 2026-01-08
+## [0.8.2] - 2026-01-08
 
 ### Fixed
-- **Skill registration**: SKILL.md now properly registered in plugin.json so Claude Code loads the usage instructions
-- Claude can now see guidance on dynamic directory support, MCP tools, and when to restart sessions
+- **Plugin validation error**: Removed `skills` field from plugin.json - not supported in current plugin manifest format
+- Plugin now loads correctly without validation errors
+
+## [0.8.1] - 2026-01-08 [YANKED]
+
+### Fixed
+- **Attempted skill registration**: Added `skills` field to plugin.json (YANKED - caused validation errors)
 
 ## [0.8.0] - 2026-01-08
 
