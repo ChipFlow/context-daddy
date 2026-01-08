@@ -1,5 +1,31 @@
 # Context Tools Plugin - Usage Guide
 
+## Important Limitations
+
+### MCP Tools Work on Session Start Directory
+
+**CRITICAL:** MCP tools (search_symbols, get_file_symbols, etc.) query the directory where the Claude Code session **started**, not the current working directory.
+
+**Problem scenario:**
+```bash
+cd /home/user/project-a
+claude                          # MCP server starts, PROJECT_ROOT=/home/user/project-a
+cd /home/user/project-b        # User changes directory
+# Tools still query project-a! ❌
+```
+
+**Solution:** If the user changes to a different project directory:
+1. Exit the current session (Ctrl+C)
+2. Start a new session: `claude` or `claude continue`
+3. The MCP server will restart with the new PROJECT_ROOT
+
+**When to tell the user this:**
+- When they ask why MCP tools are returning results from the wrong project
+- When they `cd` to a different project and want to use MCP tools
+- When they're confused about which project is being indexed
+
+The MCP server logs a warning when it detects this situation.
+
 ## Plugin Installation and Updates
 
 **CRITICAL: When the user runs `/plugin install` or `/plugin update`:**

@@ -455,6 +455,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """Handle tool calls."""
     logger.info(f"Tool called: {name} with args: {arguments}")
 
+    # Warn if current working directory doesn't match PROJECT_ROOT
+    current_cwd = Path.cwd()
+    if current_cwd != PROJECT_ROOT:
+        logger.warning(f"Working directory mismatch! PROJECT_ROOT={PROJECT_ROOT}, cwd={current_cwd}")
+        logger.warning("MCP tools will query the session start directory, not current directory")
+        logger.warning("To query a different project, restart the session in that directory")
+
     # Auto-wait for indexing if needed
     if name not in ["repo_map_status", "reindex_repo_map", "wait_for_index"]:
         try:
