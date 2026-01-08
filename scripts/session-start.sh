@@ -84,28 +84,10 @@ fi
 
 # Add repo map summary and MCP tools info
 if [[ -f "${DB_FILE}" ]]; then
-    CONTEXT="${CONTEXT}\n\n**PREFER these MCP tools over Grep/Search for code symbol lookups:**"
-    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__search_symbols: Find functions/classes/methods by pattern (e.g., 'get_*', '*Handler')"
-    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__get_file_symbols: List all symbols in a file"
-    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__get_symbol_content: Get full source code of a symbol by name"
-    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__reindex_repo_map: Trigger manual reindex if needed"
-    CONTEXT="${CONTEXT}\n- mcp__plugin_context-tools_repo-map__repo_map_status: Check index status"
-    CONTEXT="${CONTEXT}\n"
-    CONTEXT="${CONTEXT}\nThese use a pre-built SQLite index - much faster than Grep for finding definitions."
-    CONTEXT="${CONTEXT}\nUse these FIRST when looking for code symbols. Use Grep only for arbitrary text searches."
-    CONTEXT="${CONTEXT}\n"
-    CONTEXT="${CONTEXT}\n**Dynamic Directory Support (v0.8.0+):** MCP tools automatically adapt to current working directory."
-    CONTEXT="${CONTEXT}\n- 'cd /other/project' then use MCP tools → queries /other/project/.claude/repo-map.db"
-    CONTEXT="${CONTEXT}\n- No restart needed when switching projects!"
-    CONTEXT="${CONTEXT}\n- Each project maintains its own index"
+    CONTEXT="${CONTEXT}\n\nMCP symbol search tools (mcp__plugin_context-tools_repo-map__*) use pre-built SQLite index - MUCH faster than Grep for finding code symbols. Prefer these for symbol lookups."
 elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
 fi
-
-# Add plugin usage guidance
-CONTEXT="${CONTEXT}\n\n**After plugin install/update:** You MUST restart this session for MCP tools to work."
-CONTEXT="${CONTEXT}\n- Exit (Ctrl+C) then 'claude continue'"
-CONTEXT="${CONTEXT}\n- MCP servers only reload on session restart"
 
 # Output JSON with systemMessage for user display
 STATUS_MSG_ESCAPED=$(echo -n "$STATUS_MSG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | sed 's/^"//;s/"$//')

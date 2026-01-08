@@ -5,6 +5,13 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.4] - 2026-01-08
+
+### Changed
+- **Reduced context flooding**: Trimmed session start context from 17 lines to 1 concise line
+- Now just reminds Claude that MCP tools are faster than Grep for symbol lookups
+- Removed verbose tool listings and restart instructions that were overwhelming context
+
 ## [0.8.3] - 2026-01-08
 
 ### Changed
