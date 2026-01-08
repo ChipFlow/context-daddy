@@ -1,30 +1,29 @@
 # Context Tools Plugin - Usage Guide
 
-## Important Limitations
+## Dynamic Directory Support (v0.8.0+)
 
-### MCP Tools Work on Session Start Directory
+**GOOD NEWS:** MCP tools automatically adapt to the current working directory!
 
-**CRITICAL:** MCP tools (search_symbols, get_file_symbols, etc.) query the directory where the Claude Code session **started**, not the current working directory.
-
-**Problem scenario:**
+**How it works:**
 ```bash
 cd /home/user/project-a
-claude                          # MCP server starts, PROJECT_ROOT=/home/user/project-a
-cd /home/user/project-b        # User changes directory
-# Tools still query project-a! ❌
+# MCP tools query/index project-a/.claude/repo-map.db
+
+cd /home/user/project-b
+# MCP tools now query/index project-b/.claude/repo-map.db ✅
 ```
 
-**Solution:** If the user changes to a different project directory:
-1. Exit the current session (Ctrl+C)
-2. Start a new session: `claude` or `claude continue`
-3. The MCP server will restart with the new PROJECT_ROOT
+**Behavior:**
+- Tools check current working directory on each call
+- If `.claude/repo-map.db` exists: query it
+- If not: trigger indexing for current directory
+- Logs show which directory is being queried
 
-**When to tell the user this:**
-- When they ask why MCP tools are returning results from the wrong project
-- When they `cd` to a different project and want to use MCP tools
-- When they're confused about which project is being indexed
-
-The MCP server logs a warning when it detects this situation.
+**Benefits:**
+- No need to restart session when changing projects
+- Can work with multiple projects in one session
+- Each project maintains its own index
+- Tools "just work" wherever you are
 
 ## Plugin Installation and Updates
 

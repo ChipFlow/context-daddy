@@ -58,11 +58,25 @@ def get_indexer():
 
 
 # Configuration
-PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", os.getcwd()))
-CLAUDE_DIR = PROJECT_ROOT / ".claude"
-DB_PATH = CLAUDE_DIR / "repo-map.db"
-CACHE_PATH = CLAUDE_DIR / "repo-map-cache.json"
+SESSION_START_DIR = Path(os.environ.get("PROJECT_ROOT", os.getcwd()))
 STALENESS_CHECK_INTERVAL = 60  # seconds between automatic staleness checks
+
+# Dynamic paths based on current working directory
+def get_project_root() -> Path:
+    """Get current project root (current working directory)."""
+    return Path.cwd()
+
+def get_claude_dir() -> Path:
+    """Get .claude directory for current project."""
+    return get_project_root() / ".claude"
+
+def get_db_path() -> Path:
+    """Get database path for current project."""
+    return get_claude_dir() / "repo-map.db"
+
+def get_cache_path() -> Path:
+    """Get cache path for current project."""
+    return get_claude_dir() / "repo-map-cache.json"
 
 # Logging setup with rotating file handler
 logger = logging.getLogger(__name__)
@@ -74,10 +88,10 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 logger.addHandler(console_handler)
 
-# File handler (rotating log)
+# File handler (rotating log) - always in session start directory
 try:
     from logging.handlers import RotatingFileHandler
-    log_dir = CLAUDE_DIR / "logs"
+    log_dir = SESSION_START_DIR / ".claude" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "repo-map-server.log"
 
@@ -129,9 +143,10 @@ def set_subprocess_limits():
 
 def get_db() -> sqlite3.Connection:
     """Get a database connection with row factory."""
-    if not DB_PATH.exists():
-        raise FileNotFoundError(f"Repo map database not found at {DB_PATH}. Use reindex_repo_map tool.")
-    conn = sqlite3.connect(DB_PATH, timeout=5.0)
+    db_path = get_db_path()
+    if not db_path.exists():
+        raise FileNotFoundError(f"Repo map database not found at {db_path}. Use reindex_repo_map tool.")
+    conn = sqlite3.connect(db_path, timeout=5.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -189,11 +204,12 @@ def check_indexing_watchdog():
     """Check if indexing is stuck and KILL the hung subprocess."""
     global _indexing_process
 
-    if not DB_PATH.exists():
+    db_path = get_db_path()
+    if not db_path.exists():
         return
 
     try:
-        conn = sqlite3.connect(DB_PATH, timeout=5.0)
+        conn = sqlite3.connect(db_path, timeout=5.0)
         conn.row_factory = sqlite3.Row
         cursor = conn.execute("SELECT key, value FROM metadata")
         metadata = {row["key"]: row["value"] for row in cursor.fetchall()}
@@ -244,18 +260,21 @@ def is_stale() -> tuple[bool, str]:
     Returns (is_stale, reason).
     """
     indexer = get_indexer()
+    db_path = get_db_path()
+    cache_path = get_cache_path()
+    project_root = get_project_root()
 
     # No DB yet
-    if not DB_PATH.exists():
+    if not db_path.exists():
         return True, "database does not exist"
 
     # No cache file
-    if not CACHE_PATH.exists():
+    if not cache_path.exists():
         return True, "cache file missing"
 
     # Check cache version
     try:
-        cache_data = json.loads(CACHE_PATH.read_text())
+        cache_data = json.loads(cache_path.read_text())
         if cache_data.get("version") != indexer.CACHE_VERSION:
             return True, f"cache version mismatch"
     except (json.JSONDecodeError, IOError):
@@ -267,14 +286,14 @@ def is_stale() -> tuple[bool, str]:
     # Quick file count check
     current_files = []
     for ext in [".py", ".rs", ".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx"]:
-        current_files.extend(indexer.find_files(PROJECT_ROOT, {ext}))
+        current_files.extend(indexer.find_files(project_root, {ext}))
     current_count = len(current_files)
 
     if current_count != cached_count:
         return True, f"file count changed ({cached_count} cached, {current_count} found)"
 
     # Check if any file is newer than DB
-    db_mtime = DB_PATH.stat().st_mtime
+    db_mtime = db_path.stat().st_mtime
     for f in current_files[:100]:  # Sample check for speed
         if f.stat().st_mtime > db_mtime:
             return True, "files modified since last index"
@@ -295,14 +314,16 @@ def do_index() -> tuple[bool, str]:
         _index_error = None
 
     try:
-        logger.info(f"Starting index subprocess for {PROJECT_ROOT}")
+        project_root = get_project_root()
+        claude_dir = get_claude_dir()
+        logger.info(f"Starting index subprocess for {project_root}")
 
         # Ensure .claude directory exists
-        CLAUDE_DIR.mkdir(exist_ok=True)
+        claude_dir.mkdir(exist_ok=True)
 
         # Spawn subprocess to run the indexer with resource limits
         proc = subprocess.Popen(
-            ["uv", "run", str(SCRIPT_DIR / "generate-repo-map.py"), str(PROJECT_ROOT)],
+            ["uv", "run", str(SCRIPT_DIR / "generate-repo-map.py"), str(project_root)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -455,18 +476,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """Handle tool calls."""
     logger.info(f"Tool called: {name} with args: {arguments}")
 
-    # Warn if current working directory doesn't match PROJECT_ROOT
-    current_cwd = Path.cwd()
-    if current_cwd != PROJECT_ROOT:
-        logger.warning(f"Working directory mismatch! PROJECT_ROOT={PROJECT_ROOT}, cwd={current_cwd}")
-        logger.warning("MCP tools will query the session start directory, not current directory")
-        logger.warning("To query a different project, restart the session in that directory")
+    # Log which directory we're querying
+    project_root = get_project_root()
+    db_path = get_db_path()
+    if project_root != SESSION_START_DIR:
+        logger.info(f"Directory changed: session started in {SESSION_START_DIR}, now in {project_root}")
+        logger.info(f"Will query/index database at: {db_path}")
 
     # Auto-wait for indexing if needed
     if name not in ["repo_map_status", "reindex_repo_map", "wait_for_index"]:
         try:
-            if DB_PATH.exists():
-                conn = sqlite3.connect(DB_PATH, timeout=5.0)
+            if db_path.exists():
+                conn = sqlite3.connect(db_path, timeout=5.0)
                 try:
                     cursor = conn.execute("SELECT value FROM metadata WHERE key = 'status'")
                     row = cursor.fetchone()
@@ -587,6 +608,7 @@ def get_file_symbols(file: str) -> list[dict]:
 def get_symbol_content(name: str, kind: str | None = None) -> dict:
     """Get the source code content of a symbol by exact name."""
     conn = get_db()
+    project_root = get_project_root()
     try:
         # Handle Parent.method format
         if "." in name:
@@ -617,7 +639,7 @@ def get_symbol_content(name: str, kind: str | None = None) -> dict:
 
         row = rows[0]
         symbol_info = row_to_dict(row)
-        file_path = PROJECT_ROOT / row["file_path"]
+        file_path = project_root / row["file_path"]
 
         if not file_path.exists():
             return {"error": f"File not found: {row['file_path']}", "symbol": symbol_info}
@@ -668,9 +690,11 @@ def reindex_repo_map(force: bool = False) -> dict:
 def repo_map_status() -> dict:
     """Get current index status."""
     is_indexing = _indexing_process is not None and _indexing_process.poll() is None
+    project_root = get_project_root()
+    db_path = get_db_path()
     status = {
-        "project_root": str(PROJECT_ROOT),
-        "database_exists": DB_PATH.exists(),
+        "project_root": str(project_root),
+        "database_exists": db_path.exists(),
         "is_indexing": is_indexing,
     }
 
@@ -681,7 +705,7 @@ def repo_map_status() -> dict:
         status["last_index_time"] = _last_index_time
         status["last_index_ago_seconds"] = int(time.time() - _last_index_time)
 
-    if DB_PATH.exists():
+    if db_path.exists():
         try:
             conn = get_db()
 
@@ -762,8 +786,8 @@ async def periodic_watchdog_check():
 async def main():
     """Run the MCP server."""
     logger.info("=" * 60)
-    logger.info(f"MCP Server starting for project: {PROJECT_ROOT}")
-    logger.info(f"Database: {DB_PATH}")
+    logger.info(f"MCP Server starting in directory: {SESSION_START_DIR}")
+    logger.info(f"MCP tools will dynamically query current working directory")
     logger.info(f"Python: {sys.version}")
     logger.info("=" * 60)
 
