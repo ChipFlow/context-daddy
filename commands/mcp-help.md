@@ -71,6 +71,36 @@ name: "InstructionData"
 
 Benefits: One search, complete enum definition, see all variants at once.
 
+### Example 3: Finding files in directory structure (Real user interaction)
+
+**Scenario**: Need to find PSP103 or BSIM4 models in vendor directory
+
+**Inefficient approach** (using find/ls):
+```bash
+find vendor/OpenVAF/integration_tests -name "*.va" | grep -E "(psp103|bsim4)"
+ls -la openvaf-py/vendor/OpenVAF/
+ls -la vendor/
+ls -la vendor/VACASK/devices/
+ls -la vendor/VACASK/devices/psp103v4/
+# Problems:
+# - Trial and error with directory paths
+# - Multiple ls commands to explore structure
+# - Slow on large directory trees
+```
+
+**Efficient approach** (using MCP tools):
+```
+mcp__plugin_context-tools_repo-map__list_files
+pattern: "*psp103*"
+# Result: Instant list of all PSP103-related files
+
+mcp__plugin_context-tools_repo-map__list_files
+pattern: "*.va"
+# Result: All Verilog-A model files
+```
+
+Benefits: One query, instant results, no trial-and-error with paths.
+
 ## Available MCP Tools
 
 **Search for symbols by pattern:**
@@ -93,6 +123,17 @@ mcp__plugin_context-tools_repo-map__get_symbol_content
 name: "UserModel"         # Class name
 name: "process_data"      # Function name
 name: "User.save"         # Method name
+```
+
+**List indexed files (discover file structure):**
+```
+mcp__plugin_context-tools_repo-map__list_files
+# List all indexed files
+
+mcp__plugin_context-tools_repo-map__list_files
+pattern: "*.va"           # All Verilog-A files
+pattern: "*psp103*"       # PSP103 model files
+pattern: "**/devices/*"   # All files under devices/
 ```
 
 **Check index status:**

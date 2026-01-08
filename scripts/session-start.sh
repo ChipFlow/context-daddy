@@ -84,11 +84,12 @@ fi
 
 # Add repo map summary and MCP tools info
 if [[ -f "${DB_FILE}" ]]; then
-    CONTEXT="${CONTEXT}\n\n⚡ **BEFORE using grep/search for code**: ALWAYS try MCP tools first (mcp__plugin_context-tools_repo-map__*)."
+    CONTEXT="${CONTEXT}\n\n⚡ **BEFORE using grep/find/ls for code**: ALWAYS try MCP tools first (mcp__plugin_context-tools_repo-map__*)."
     CONTEXT="${CONTEXT}\n• Finding enum/struct/class definition? → search_symbols(\"TypeName\") then get_symbol_content(\"TypeName\")"
     CONTEXT="${CONTEXT}\n• Finding functions by pattern? → search_symbols(\"setup_*\") or search_symbols(\"*Handler\")"
     CONTEXT="${CONTEXT}\n• What's in a file? → get_file_symbols(\"path/to/file.rs\")"
-    CONTEXT="${CONTEXT}\n• 10-100x faster than grep. Use grep only for text/comments/strings. /context-tools:mcp-help for more."
+    CONTEXT="${CONTEXT}\n• Finding files? → list_files(\"*.va\") or list_files(\"*psp103*\") - faster than find/ls"
+    CONTEXT="${CONTEXT}\n• 10-100x faster than grep/find/ls. Use grep only for text/comments. /context-tools:mcp-help for more."
 elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
 fi

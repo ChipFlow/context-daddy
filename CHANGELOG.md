@@ -5,6 +5,20 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.7] - 2026-01-08
+
+### Added
+- **New MCP tool: list_files** - List all indexed files, filtered by glob pattern
+  - Much faster than find/ls for discovering file structure
+  - Queries pre-built index instead of filesystem traversal
+  - Examples: `list_files("*.va")`, `list_files("*psp103*")`, `list_files("**/devices/*")`
+- **Real-world example**: Added user's PSP103/BSIM4 model discovery scenario to mcp-help
+- **Session start guidance**: Added file listing to MCP tools quick reference
+- **Comprehensive tests**: Test suite validates list_files functionality
+
+### Changed
+- Session start now mentions "BEFORE using grep/find/ls" instead of just grep
+
 ## [0.8.6] - 2026-01-08
 
 ### Changed

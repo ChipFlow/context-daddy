@@ -189,6 +189,10 @@ Keys:
 - `mcp__plugin_context-tools_repo-map__get_symbol_content` - Get full source code of a symbol by exact name
   - Returns: symbol metadata + content (source code text) + location
   - **AUTO-WAIT**: If indexing is in progress, automatically waits up to 60s for completion
+- `mcp__plugin_context-tools_repo-map__list_files` - List all indexed files, optionally filtered by glob pattern
+  - Returns: list of file paths matching pattern (e.g., "*.va", "*psp103*", "**/devices/*")
+  - **MUCH faster than find/ls** - queries pre-built index instead of filesystem traversal
+  - **AUTO-WAIT**: If indexing is in progress, automatically waits up to 60s for completion
 - `mcp__plugin_context-tools_repo-map__reindex_repo_map` - Trigger manual reindex
   - Does NOT auto-wait (use to force reindex)
 - `mcp__plugin_context-tools_repo-map__repo_map_status` - Check indexing status and staleness

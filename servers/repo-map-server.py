@@ -447,6 +447,25 @@ async def list_tools() -> list[Tool]:
                 }
             }
         ),
+        Tool(
+            name="list_files",
+            description="List all indexed files, optionally filtered by glob pattern. MUCH faster than find/ls for discovering file structure - queries pre-built index instead of filesystem traversal.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Optional glob pattern to filter files. Examples: '*.va' (all Verilog-A), '*psp103*' (PSP103 models), '**/devices/*' (all files under devices/). If not specified, returns all indexed files."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "Maximum number of results to return (default: 100)"
+                    }
+                },
+                "required": []
+            }
+        ),
     ]
 
 
@@ -528,6 +547,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             timeout = arguments.get("timeout_seconds", 60)
             success, msg = await wait_for_indexing(timeout_seconds=timeout)
             result = {"success": success, "message": msg}
+        elif name == "list_files":
+            result = list_files(
+                pattern=arguments.get("pattern"),
+                limit=arguments.get("limit", 100)
+            )
         else:
             result = {"error": f"Unknown tool: {name}"}
             logger.error(f"Unknown tool: {name}")
@@ -753,6 +777,42 @@ def repo_map_status() -> dict:
     status["staleness_reason"] = reason
 
     return status
+
+
+def list_files(pattern: str | None = None, limit: int = 100) -> dict:
+    """
+    List all indexed files, optionally filtered by glob pattern.
+    Much faster than find/ls - queries pre-built index.
+    """
+    conn = get_db()
+    try:
+        # Get distinct file paths from symbols table
+        query = "SELECT DISTINCT file_path FROM symbols"
+        params: list = []
+
+        # Apply glob pattern filtering if provided
+        if pattern:
+            # Convert glob pattern to SQL LIKE pattern
+            sql_pattern = pattern.replace("*", "%").replace("?", "_")
+            query += " WHERE file_path LIKE ?"
+            params.append(sql_pattern)
+
+        query += " ORDER BY file_path LIMIT ?"
+        params.append(limit)
+
+        cursor = conn.execute(query, params)
+        rows = cursor.fetchall()
+
+        files = [row["file_path"] for row in rows]
+
+        return {
+            "files": files,
+            "count": len(files),
+            "pattern": pattern or "all",
+            "limit": limit
+        }
+    finally:
+        conn.close()
 
 
 async def periodic_staleness_check():
