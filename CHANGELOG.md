@@ -5,6 +5,17 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.12] - 2026-01-09
+
+### Changed
+- **Simplified precompact hook** - Removed all regeneration logic for significant performance improvement
+  - MCP server maintains repo map automatically (no need to regenerate)
+  - Session-start hook handles manifest generation (no need to regenerate during compaction)
+  - Precompact now only shows learnings.md reminder (instant)
+
+### Fixed
+- **Slow precompact performance** - Hook no longer blocks on expensive repo map or manifest regeneration
+
 ## [0.8.11] - 2026-01-09
 
 ### Changed
