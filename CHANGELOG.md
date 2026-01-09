@@ -5,6 +5,21 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.11] - 2026-01-09
+
+### Changed
+- **Mandatory first action directive**: Session start now instructs Claude to run a test MCP query immediately
+  - Forces Claude to verify tools work by running `list_files` or `search_symbols` at session start
+  - Establishes tool usage habit from the very first action
+  - Proves (not just tells) that MCP tools work in the current project
+- **Explicit tool naming**: Changed "grep/find/ls" to "Search/Grep/Glob/find/ls" to explicitly mention Search tool
+- **Real-world examples**: Updated list_files example to show `*ring*` pattern matching actual user scenarios
+- **Stronger directive language**: Enhanced messaging to make MCP-first approach more mandatory
+
+### Fixed
+- **Tool adoption issue**: Despite "guaranteed to work" messaging, Claude was still defaulting to Search/ls commands
+  - New approach: Make Claude actually USE the tools at session start, not just read about them
+
 ## [0.8.10] - 2026-01-09
 
 ### Added
