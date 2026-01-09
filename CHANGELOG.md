@@ -5,6 +5,18 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.13] - 2026-01-09
+
+### Changed
+- **Improved learnings reminder wording** - Changed from "discoveries" to "what you built/learned"
+  - "Discoveries" implied finding existing things, not recording implementations
+  - Now explicitly prompts for: features/APIs implemented, integration points, design decisions
+  - Added concrete examples: "Python bindings, new modules"
+  - Added urgency: "Without this, context compaction will forget what you just built!"
+
+### Fixed
+- **Learnings not being used** - Better wording should prompt Claude to actually update learnings.md
+
 ## [0.8.12] - 2026-01-09
 
 ### Changed
