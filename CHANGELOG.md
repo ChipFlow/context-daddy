@@ -5,6 +5,29 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.8] - 2026-01-09
+
+### Added
+- **Progressive indexing feedback** - No more hanging or uncertainty!
+  - MCP server starts indexing proactively on startup if DB doesn't exist
+  - Tools return progress info (percentage, estimated time) instead of errors during indexing
+  - Session start shows real-time status: "✅ Ready" or "⏳ Indexing: 45% (1200/2700 files, ~2m)"
+  - New `get_indexing_progress()` function provides detailed progress information
+
+### Changed
+- **Reduced auto-wait timeout**: 60s → 15s for better responsiveness
+  - Tools wait max 15 seconds, then return progress instead of hanging
+  - No more hour-long waits - get feedback within 15 seconds
+- **Confident messaging**: Session start now says "✅ Repo map ready: X symbols indexed - MCP tools guaranteed to work!"
+  - Addresses Claude's uncertainty about whether tools will work
+  - Shows proof that index exists and is ready
+
+### Fixed
+- **Claude's behavioral concerns addressed**:
+  - Habit: More directive messaging with confident "guaranteed to work" language
+  - Uncertainty: Real-time status proof at session start
+  - Perceived simplicity: Clear that MCP tools work just like find/ls but faster
+
 ## [0.8.7] - 2026-01-08
 
 ### Added

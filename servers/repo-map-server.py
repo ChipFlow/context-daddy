@@ -78,6 +78,10 @@ def get_cache_path() -> Path:
     """Get cache path for current project."""
     return get_claude_dir() / "repo-map-cache.json"
 
+def get_progress_path() -> Path:
+    """Get progress file path for current project."""
+    return get_claude_dir() / "repo-map-progress.json"
+
 # Logging setup with rotating file handler
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -502,7 +506,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         logger.info(f"Directory changed: session started in {SESSION_START_DIR}, now in {project_root}")
         logger.info(f"Will query/index database at: {db_path}")
 
-    # Auto-wait for indexing if needed
+    # Auto-wait for indexing if needed (reduced timeout for better UX)
     if name not in ["repo_map_status", "reindex_repo_map", "wait_for_index"]:
         try:
             if db_path.exists():
@@ -511,13 +515,24 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     cursor = conn.execute("SELECT value FROM metadata WHERE key = 'status'")
                     row = cursor.fetchone()
                     if row and row[0] == "indexing":
-                        logger.info("Indexing in progress, waiting...")
-                        success, msg = await wait_for_indexing(timeout_seconds=60)
+                        logger.info("Indexing in progress, waiting up to 15 seconds...")
+                        success, msg = await wait_for_indexing(timeout_seconds=15)
                         if not success:
-                            return [TextContent(type="text", text=json.dumps({
-                                "error": "Indexing in progress. Please try again in a moment.",
-                                "status": msg
-                            }))]
+                            # Don't return error - return progress information instead
+                            progress = get_indexing_progress()
+                            if progress:
+                                return [TextContent(type="text", text=json.dumps({
+                                    "status": "indexing_in_progress",
+                                    "message": "Index is building. Try again in a moment or use repo_map_status to check progress.",
+                                    "progress": progress,
+                                    "partial_results": []
+                                }, indent=2))]
+                            else:
+                                return [TextContent(type="text", text=json.dumps({
+                                    "status": "indexing_in_progress",
+                                    "message": "Index is building. Try again in a moment or use repo_map_status to check progress.",
+                                    "partial_results": []
+                                }, indent=2))]
                 except sqlite3.OperationalError:
                     pass  # Metadata table doesn't exist yet
                 finally:
@@ -777,6 +792,52 @@ def repo_map_status() -> dict:
     status["staleness_reason"] = reason
 
     return status
+
+
+def get_indexing_progress() -> dict | None:
+    """
+    Get current indexing progress from progress file.
+    Returns dict with progress info, or None if no progress file.
+    """
+    progress_path = get_progress_path()
+    if not progress_path.exists():
+        return None
+
+    try:
+        data = json.loads(progress_path.read_text())
+
+        # Calculate percentage if we have the data
+        status = data.get("status", "unknown")
+        files_parsed = data.get("files_parsed", 0)
+        files_to_parse = data.get("files_to_parse", 0)
+        files_total = data.get("files_total", 0)
+        symbols_found = data.get("symbols_found", 0)
+
+        percentage = 0
+        if files_to_parse > 0:
+            percentage = int((files_parsed / files_to_parse) * 100)
+
+        # Estimate time remaining (very rough)
+        # Assume average 50ms per file
+        files_remaining = files_to_parse - files_parsed
+        estimated_seconds = max(0, int(files_remaining * 0.05))  # 50ms per file
+
+        if estimated_seconds < 60:
+            time_remaining = f"{estimated_seconds} seconds"
+        else:
+            time_remaining = f"{int(estimated_seconds / 60)} minutes"
+
+        return {
+            "status": status,
+            "percentage": percentage,
+            "files_parsed": files_parsed,
+            "files_to_parse": files_to_parse,
+            "files_total": files_total,
+            "symbols_found": symbols_found,
+            "estimated_time_remaining": time_remaining if files_remaining > 0 else "completing..."
+        }
+    except (json.JSONDecodeError, IOError, KeyError):
+        return None
 
 
 def list_files(pattern: str | None = None, limit: int = 100) -> dict:

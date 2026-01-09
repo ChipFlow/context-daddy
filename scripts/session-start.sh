@@ -33,11 +33,41 @@ uv run "${SCRIPT_DIR}/generate-manifest.py" "${PROJECT_ROOT}" >/dev/null 2>&1 ||
 
 REPO_MAP="${CLAUDE_DIR}/repo-map.md"
 DB_FILE="${CLAUDE_DIR}/repo-map.db"
+PROGRESS_FILE="${CLAUDE_DIR}/repo-map-progress.json"
 
-# Determine repo map status message
+# Determine repo map status message (check indexing status)
+INDEXING_STATUS=""
 if [[ -f "${DB_FILE}" ]]; then
+    # Check if indexing is in progress
+    INDEXING_STATUS=$(sqlite3 "${DB_FILE}" "SELECT value FROM metadata WHERE key = 'status'" 2>/dev/null || echo "")
+fi
+
+if [[ "${INDEXING_STATUS}" == "indexing" && -f "${PROGRESS_FILE}" ]]; then
+    # Indexing in progress - show progress
+    PROGRESS_INFO=$(python3 -c "
+import json
+try:
+    with open('${PROGRESS_FILE}') as f:
+        p = json.load(f)
+    parsed = p.get('files_parsed', 0)
+    to_parse = p.get('files_to_parse', 1)
+    total = p.get('files_total', 0)
+    pct = int((parsed / to_parse) * 100) if to_parse > 0 else 0
+    remaining = to_parse - parsed
+    est_sec = max(0, int(remaining * 0.05))
+    if est_sec < 60:
+        time_str = f'{est_sec}s'
+    else:
+        time_str = f'{int(est_sec / 60)}m'
+    print(f'{pct}% ({parsed}/{to_parse} files, ~{time_str} remaining)')
+except:
+    print('in progress')
+" 2>/dev/null || echo "in progress")
+    STATUS_MSG="[context-tools] ⏳ Indexing: ${PROGRESS_INFO}"
+elif [[ -f "${DB_FILE}" ]]; then
+    # Index exists and ready
     SYMBOL_COUNT=$(sqlite3 "${DB_FILE}" "SELECT COUNT(*) FROM symbols" 2>/dev/null || echo "0")
-    STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols (MCP server handles updates)"
+    STATUS_MSG="[context-tools] ✅ Repo map ready: ${SYMBOL_COUNT} symbols indexed"
 elif [[ -f "${REPO_MAP}" ]]; then
     SYMBOL_COUNT=$(grep -c "^\*\*" "${REPO_MAP}" 2>/dev/null || echo "0")
     STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols"
@@ -83,7 +113,15 @@ if [[ -f "${LEARNINGS}" ]]; then
 fi
 
 # Add repo map summary and MCP tools info
-if [[ -f "${DB_FILE}" ]]; then
+if [[ "${INDEXING_STATUS}" == "indexing" ]]; then
+    # Indexing in progress
+    CONTEXT="${CONTEXT}\n\n⏳ **Repo map indexing in progress** (${PROGRESS_INFO})"
+    CONTEXT="${CONTEXT}\n• MCP tools will work once indexing completes"
+    CONTEXT="${CONTEXT}\n• Use repo_map_status to check progress"
+    CONTEXT="${CONTEXT}\n• Most tools auto-wait up to 15 seconds, then return progress info"
+elif [[ -f "${DB_FILE}" ]]; then
+    # Ready to use
+    CONTEXT="${CONTEXT}\n\n✅ **Repo map ready: ${SYMBOL_COUNT} symbols indexed** - MCP tools guaranteed to work!"
     CONTEXT="${CONTEXT}\n\n⚡ **BEFORE using grep/find/ls for code**: ALWAYS try MCP tools first (mcp__plugin_context-tools_repo-map__*)."
     CONTEXT="${CONTEXT}\n• Finding enum/struct/class definition? → search_symbols(\"TypeName\") then get_symbol_content(\"TypeName\")"
     CONTEXT="${CONTEXT}\n• Finding functions by pattern? → search_symbols(\"setup_*\") or search_symbols(\"*Handler\")"
