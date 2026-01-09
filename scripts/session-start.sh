@@ -121,7 +121,7 @@ if [[ "${INDEXING_STATUS}" == "indexing" ]]; then
     CONTEXT="${CONTEXT}\n• Most tools auto-wait up to 15 seconds, then return progress info"
 elif [[ -f "${DB_FILE}" ]]; then
     # Ready to use
-    CONTEXT="${CONTEXT}\n\n✅ **Repo map ready: ${SYMBOL_COUNT} symbols indexed** - MCP tools guaranteed to work!"
+    CONTEXT="${CONTEXT}\n\n✅ **Repo map ready: ${SYMBOL_COUNT} symbols indexed** - context-tools MCP guaranteed to work!"
     CONTEXT="${CONTEXT}\n\n⚡ **BEFORE using grep/find/ls for code**: ALWAYS try MCP tools first (mcp__plugin_context-tools_repo-map__*)."
     CONTEXT="${CONTEXT}\n• Finding enum/struct/class definition? → search_symbols(\"TypeName\") then get_symbol_content(\"TypeName\")"
     CONTEXT="${CONTEXT}\n• Finding functions by pattern? → search_symbols(\"setup_*\") or search_symbols(\"*Handler\")"
