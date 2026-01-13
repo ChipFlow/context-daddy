@@ -5,6 +5,40 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-01-09
+
+### Added
+- **Markdown navigation tools** - Navigate large markdown documentation files efficiently
+  - `md_outline(file_path)` - Get hierarchical heading structure (table of contents)
+  - `md_get_section(file_path, heading)` - Extract content under specific heading
+  - `md_list_tables(file_path)` - List all tables with headers and context
+  - `md_get_table(file_path, index)` - Get full table content by index
+  - `md_list_figures(file_path)` - List all images/figures with alt text and paths
+  - All return clean markdown format for easy reading
+
+### Use Cases
+- Navigate large CLAUDE.md, learnings.md, or API documentation
+- Extract specific sections without reading entire files
+- Find and compare benchmark tables
+- Locate images and diagrams
+- Pairs perfectly with post-compaction reorientation (fetch specific sections)
+
+### Examples
+```markdown
+## md_outline(".claude/learnings.md")
+- Project Learnings (line 1)
+  - OSDI Python Bindings (line 3)
+  - JAX Circuit Evaluation (line 15)
+    - Performance Optimization (line 20)
+
+## md_list_tables("docs/benchmarks.md")
+1. Line 23: | Test Case | Time (ms) | Memory (MB) |
+2. Line 45: | Framework | Score |
+
+## md_list_figures("README.md")
+1. Line 46: Architecture Diagram -> ./images/arch.png
+```
+
 ## [0.9.0] - 2026-01-09
 
 ### Changed

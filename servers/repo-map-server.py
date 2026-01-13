@@ -470,6 +470,84 @@ async def list_tools() -> list[Tool]:
                 "required": []
             }
         ),
+        Tool(
+            name="md_outline",
+            description="Get hierarchical outline of markdown headings. Returns table of contents showing document structure. Useful for navigating large documentation files.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Relative path to markdown file. Example: '.claude/learnings.md', 'docs/API.md'"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
+        Tool(
+            name="md_get_section",
+            description="Get content under a specific heading from markdown file. Returns section content until next same-level heading. Case-insensitive flexible matching.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Relative path to markdown file"
+                    },
+                    "heading": {
+                        "type": "string",
+                        "description": "Heading text to find (case-insensitive). Example: 'Installation', 'API Reference'"
+                    }
+                },
+                "required": ["file_path", "heading"]
+            }
+        ),
+        Tool(
+            name="md_list_tables",
+            description="List all markdown tables with context. Returns summary showing table location, headers, and surrounding context. Useful for finding specific data tables.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Relative path to markdown file"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
+        Tool(
+            name="md_get_table",
+            description="Get full markdown table by index (0-based). Use md_list_tables first to see available tables and their indices.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Relative path to markdown file"
+                    },
+                    "index": {
+                        "type": "integer",
+                        "description": "Table index (0-based). Get indices from md_list_tables."
+                    }
+                },
+                "required": ["file_path", "index"]
+            }
+        ),
+        Tool(
+            name="md_list_figures",
+            description="List all images/figures referenced in markdown. Returns image locations with alt text and paths.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Relative path to markdown file"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
     ]
 
 
@@ -507,7 +585,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         logger.info(f"Will query/index database at: {db_path}")
 
     # Auto-wait for indexing if needed (reduced timeout for better UX)
-    if name not in ["repo_map_status", "reindex_repo_map", "wait_for_index"]:
+    # Markdown tools don't need indexing
+    if name not in ["repo_map_status", "reindex_repo_map", "wait_for_index",
+                     "md_outline", "md_get_section", "md_list_tables", "md_get_table", "md_list_figures"]:
         try:
             if db_path.exists():
                 conn = sqlite3.connect(db_path, timeout=5.0)
@@ -567,6 +647,22 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 pattern=arguments.get("pattern"),
                 limit=arguments.get("limit", 100)
             )
+        elif name == "md_outline":
+            result = md_outline(file_path=arguments["file_path"])
+        elif name == "md_get_section":
+            result = md_get_section(
+                file_path=arguments["file_path"],
+                heading=arguments["heading"]
+            )
+        elif name == "md_list_tables":
+            result = md_list_tables(file_path=arguments["file_path"])
+        elif name == "md_get_table":
+            result = md_get_table(
+                file_path=arguments["file_path"],
+                index=arguments["index"]
+            )
+        elif name == "md_list_figures":
+            result = md_list_figures(file_path=arguments["file_path"])
         else:
             result = {"error": f"Unknown tool: {name}"}
             logger.error(f"Unknown tool: {name}")
@@ -980,6 +1076,250 @@ def list_files(pattern: str | None = None, limit: int = 100) -> str:
         return md
     finally:
         conn.close()
+
+
+# ============================================================================
+# Markdown Navigation Tools
+# ============================================================================
+
+def md_outline(file_path: str) -> str:
+    """
+    Get hierarchical outline of markdown headings.
+    Returns markdown-formatted table of contents.
+    """
+    project_root = get_project_root()
+    full_path = project_root / file_path
+
+    if not full_path.exists():
+        return f"❌ File not found: `{file_path}`"
+
+    try:
+        content = full_path.read_text(encoding="utf-8")
+    except (IOError, UnicodeDecodeError) as e:
+        return f"❌ Could not read file: {e}"
+
+    # Extract headings
+    headings = []
+    for line_num, line in enumerate(content.splitlines(), 1):
+        if line.startswith("#"):
+            # Count heading level
+            level = len(line) - len(line.lstrip("#"))
+            heading_text = line.lstrip("#").strip()
+            if heading_text:
+                headings.append((level, heading_text, line_num))
+
+    if not headings:
+        return f"No headings found in `{file_path}`"
+
+    # Format as markdown outline
+    md = f"## Outline: `{file_path}`\n\n"
+    for level, text, line_num in headings:
+        indent = "  " * (level - 1)
+        md += f"{indent}- **{text}** (line {line_num})\n"
+
+    return md
+
+
+def md_get_section(file_path: str, heading: str) -> str:
+    """
+    Get content under a specific heading (until next same-level heading).
+    Returns markdown with the section content.
+    """
+    project_root = get_project_root()
+    full_path = project_root / file_path
+
+    if not full_path.exists():
+        return f"❌ File not found: `{file_path}`"
+
+    try:
+        lines = full_path.read_text(encoding="utf-8").splitlines()
+    except (IOError, UnicodeDecodeError) as e:
+        return f"❌ Could not read file: {e}"
+
+    # Find the heading (case-insensitive, flexible matching)
+    heading_lower = heading.lower().strip()
+    start_line = None
+    heading_level = None
+
+    for i, line in enumerate(lines):
+        if line.startswith("#"):
+            level = len(line) - len(line.lstrip("#"))
+            text = line.lstrip("#").strip().lower()
+            if heading_lower in text or text in heading_lower:
+                start_line = i
+                heading_level = level
+                break
+
+    if start_line is None:
+        return f"❌ Heading not found: `{heading}` in `{file_path}`"
+
+    # Find end of section (next same-level or higher heading)
+    end_line = len(lines)
+    if heading_level is not None:
+        for i in range(start_line + 1, len(lines)):
+            if lines[i].startswith("#"):
+                level = len(lines[i]) - len(lines[i].lstrip("#"))
+                if level <= heading_level:
+                    end_line = i
+                    break
+
+    # Extract section content
+    section_lines = lines[start_line:end_line]
+    content = "\n".join(section_lines)
+
+    md = f"## Section from `{file_path}`\n\n"
+    md += f"```markdown\n{content}\n```\n"
+
+    return md
+
+
+def md_list_tables(file_path: str) -> str:
+    """
+    List all markdown tables with context (surrounding text).
+    Returns summary of each table.
+    """
+    project_root = get_project_root()
+    full_path = project_root / file_path
+
+    if not full_path.exists():
+        return f"❌ File not found: `{file_path}`"
+
+    try:
+        lines = full_path.read_text(encoding="utf-8").splitlines()
+    except (IOError, UnicodeDecodeError) as e:
+        return f"❌ Could not read file: {e}"
+
+    # Find tables (look for separator lines with |---|)
+    tables = []
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        # Table separator line pattern
+        if "|" in line and ("-" in line or ":" in line):
+            # Check if previous line is table header
+            if i > 0 and "|" in lines[i - 1]:
+                header_line = lines[i - 1].strip()
+                # Find preceding context (heading or text)
+                context = ""
+                for j in range(i - 1, max(0, i - 10), -1):
+                    if lines[j].startswith("#"):
+                        context = lines[j].lstrip("#").strip()
+                        break
+                    elif lines[j].strip():
+                        context = lines[j].strip()[:50] + "..." if len(lines[j].strip()) > 50 else lines[j].strip()
+
+                tables.append({
+                    "index": len(tables),
+                    "line": i + 1,
+                    "header": header_line,
+                    "context": context or "(no context)"
+                })
+        i += 1
+
+    if not tables:
+        return f"No tables found in `{file_path}`"
+
+    # Format as markdown
+    md = f"## Found {len(tables)} table(s) in `{file_path}`\n\n"
+    for table in tables:
+        md += f"{table['index'] + 1}. **Line {table['line']}** - {table['context']}\n"
+        md += f"   Header: `{table['header']}`\n\n"
+
+    md += "\nUse `md_get_table(file_path, index)` to get full table content.\n"
+
+    return md
+
+
+def md_get_table(file_path: str, index: int) -> str:
+    """
+    Get full markdown table by index (0-based).
+    Returns the complete table in markdown.
+    """
+    project_root = get_project_root()
+    full_path = project_root / file_path
+
+    if not full_path.exists():
+        return f"❌ File not found: `{file_path}`"
+
+    try:
+        lines = full_path.read_text(encoding="utf-8").splitlines()
+    except (IOError, UnicodeDecodeError) as e:
+        return f"❌ Could not read file: {e}"
+
+    # Find tables
+    table_starts = []
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if "|" in line and ("-" in line or ":" in line):
+            if i > 0 and "|" in lines[i - 1]:
+                # Found table separator, header is at i-1
+                table_starts.append(i - 1)
+        i += 1
+
+    if not table_starts:
+        return f"No tables found in `{file_path}`"
+
+    if index < 0 or index >= len(table_starts):
+        return f"❌ Table index {index} out of range (found {len(table_starts)} tables)"
+
+    # Extract table (from header until non-table line)
+    start = table_starts[index]
+    end = start
+    for i in range(start, len(lines)):
+        if "|" in lines[i]:
+            end = i + 1
+        else:
+            break
+
+    table_lines = lines[start:end]
+    table_content = "\n".join(table_lines)
+
+    md = f"## Table {index + 1} from `{file_path}` (line {start + 1})\n\n"
+    md += table_content + "\n"
+
+    return md
+
+
+def md_list_figures(file_path: str) -> str:
+    """
+    List all images/figures referenced in markdown.
+    Returns list with alt text and paths.
+    """
+    project_root = get_project_root()
+    full_path = project_root / file_path
+
+    if not full_path.exists():
+        return f"❌ File not found: `{file_path}`"
+
+    try:
+        content = full_path.read_text(encoding="utf-8")
+    except (IOError, UnicodeDecodeError) as e:
+        return f"❌ Could not read file: {e}"
+
+    # Find markdown images: ![alt](path)
+    import re
+    figures = []
+    for line_num, line in enumerate(content.splitlines(), 1):
+        # Pattern: ![alt text](image/path.png)
+        matches = re.findall(r'!\[([^\]]*)\]\(([^\)]+)\)', line)
+        for alt_text, img_path in matches:
+            figures.append({
+                "line": line_num,
+                "alt": alt_text or "(no alt text)",
+                "path": img_path
+            })
+
+    if not figures:
+        return f"No figures/images found in `{file_path}`"
+
+    # Format as markdown
+    md = f"## Found {len(figures)} figure(s) in `{file_path}`\n\n"
+    for i, fig in enumerate(figures, 1):
+        md += f"{i}. **Line {fig['line']}**: {fig['alt']}\n"
+        md += f"   Path: `{fig['path']}`\n\n"
+
+    return md
 
 
 async def periodic_staleness_check():
