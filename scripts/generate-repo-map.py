@@ -1158,6 +1158,7 @@ def main():
             "status": "complete",
             "files_total": total_files,
             "files_cached": cached_count,
+            "files_to_parse": parsed_count,
             "files_parsed": parsed_count,
             "symbols_found": len(all_symbols),
             "timestamp": time.time(),

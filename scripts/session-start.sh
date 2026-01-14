@@ -50,10 +50,10 @@ try:
     with open('${PROGRESS_FILE}') as f:
         p = json.load(f)
     parsed = p.get('files_parsed', 0)
-    to_parse = p.get('files_to_parse', 1)
+    to_parse = p.get('files_to_parse', p.get('files_total', 0))
     total = p.get('files_total', 0)
     pct = int((parsed / to_parse) * 100) if to_parse > 0 else 0
-    remaining = to_parse - parsed
+    remaining = max(0, to_parse - parsed)
     est_sec = max(0, int(remaining * 0.05))
     if est_sec < 60:
         time_str = f'{est_sec}s'
