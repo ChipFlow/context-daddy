@@ -219,6 +219,98 @@ When testing hung processes:
 - **Don't** look for child processes (none exist)
 - **Don't** try to kill tree-sitter separately (in-process)
 
+## Database Versioning (v0.9.4+)
+
+### Schema Version Tracking
+
+The SQLite database includes a version number in the metadata table:
+
+```python
+DB_VERSION = 1  # In generate-repo-map.py
+
+# Written to metadata table during indexing
+set_metadata(conn, 'db_version', str(DB_VERSION))
+```
+
+### Why Version the Database?
+
+**Problem:** Multiple Claude sessions using different plugin versions in the same project directory.
+
+**Without versioning:**
+- Version A creates schema with new columns
+- Version B (older) tries to read, gets errors
+- No way to detect schema mismatch
+
+**With versioning:**
+- Each version writes `db_version` to metadata
+- Tools can check version compatibility
+- Clear error messages about version mismatch
+- Can implement migration logic if needed
+
+### Current Schema (v1)
+
+```sql
+-- Symbols table
+CREATE TABLE symbols (
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    signature TEXT,
+    docstring TEXT,
+    file_path TEXT NOT NULL,
+    line_number INTEGER NOT NULL,
+    end_line_number INTEGER,
+    parent TEXT
+);
+
+-- Full-text search
+CREATE VIRTUAL TABLE code_text_fts USING fts5(
+    name, signature, docstring, content='symbols'
+);
+
+-- Metadata
+CREATE TABLE metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+```
+
+**Metadata keys:**
+- `status` - indexing status (idle/indexing/completed/failed)
+- `db_version` - schema version (1)
+- `last_indexed` - ISO timestamp
+- `symbol_count` - number of symbols indexed
+
+### Future Schema Changes
+
+When schema needs to change:
+
+1. **Bump DB_VERSION** in `generate-repo-map.py`
+2. **Add migration logic** in repo-map-server.py:
+   ```python
+   current_version = get_metadata(conn, 'db_version')
+   if current_version != DB_VERSION:
+       if current_version == '1' and DB_VERSION == 2:
+           # Run migration from v1 to v2
+           migrate_v1_to_v2(conn)
+       else:
+           # Trigger full reindex for major changes
+           trigger_reindex()
+   ```
+3. **Update CHANGELOG.md** with migration details
+4. **Test with both old and new schemas**
+
+### Concurrent Version Handling
+
+**Old approach (v0.9.0-v0.9.3):** Session start deleted old plugin versions
+- **Problem:** Broke other Claude sessions using old versions
+- **Result:** Removed cleanup code in v0.9.4
+
+**Current approach (v0.9.4+):** Allow multiple versions to coexist
+- Different versions can run in different project directories
+- Same project directory: last indexing determines schema
+- Users update all sessions when ready
+- Database version enables detection of mismatches
+
 ## Summary
 
 Tree-sitter process "tree":
