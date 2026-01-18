@@ -5,6 +5,24 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.6] - 2026-01-16
+
+### Added
+- **Plugin configuration validation tests** - Comprehensive testing to prevent configuration bugs
+  - `tests/test_plugin_config.py` - 7 static validation tests
+    - Validates plugin.json has all required fields (including `hooks`)
+    - Verifies hooks.json structure and referenced scripts exist
+    - Checks version format and marketplace.json consistency
+  - `.github/workflows/test-hooks.yml` - E2E hook execution test
+    - Actually loads plugin into Claude Code
+    - Tests SessionStart, PreCompact, and Stop hooks
+    - Verifies hooks fire and create expected side effects
+  - Added to CI pipeline - runs on every push
+  - **Would have caught v0.9.4 bug** - missing `hooks` field now fails CI
+
+### Changed
+- CI now runs comprehensive plugin validation after JSON syntax checks
+
 ## [0.9.5] - 2026-01-16
 
 ### Fixed

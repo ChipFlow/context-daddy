@@ -45,6 +45,11 @@ jobs:
           python3 -c "import json; json.load(open('hooks/hooks.json'))"
           echo "Valid JSON"
 
+      - name: Validate plugin configuration
+        run: |
+          echo "Running comprehensive plugin configuration validation..."
+          uv run tests/test_plugin_config.py
+
       - name: Lint bash scripts
         run: |
           echo "Checking bash script syntax..."
