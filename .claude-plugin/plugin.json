@@ -7,7 +7,7 @@
   },
   "keywords": ["context", "documentation", "repo-map", "duplicate-detection", "learnings"],
   "repository": "https://github.com/chipflow/claude-context-tools",
-  "hooks": "${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json",
+  "hooks": "hooks/hooks.json",
   "mcpServers": {
     "repo-map": {
       "command": "uv",
