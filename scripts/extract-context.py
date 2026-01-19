@@ -94,7 +94,7 @@ def main():
     result = {
         "project_root": str(project_root),
         "project_name": project_root.name,
-        "dir_tree": get_dir_tree(project_root, max_depth=2),
+        "dir_tree": get_dir_tree(project_root, max_depth=3),
     }
 
     if narrative_file.exists():
