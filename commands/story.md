@@ -53,6 +53,12 @@ Then generate a narrative document with EXACTLY this structure and write it to `
 - Look at commit patterns, file churn, and major changes to identify epochs and focus areas
 - High-churn files often indicate pain points (dragons)
 
+**LENGTH LIMITS** (sections are auto-truncated when injected into context):
+- **Summary**: ~2-3 sentences, under 300 characters
+- **Current Foci**: 2-4 bullet points, under 400 characters total
+- **Dragons & Gotchas**: Key warnings only, under 300 characters
+- Keep it punchy - this gets injected on every session start
+
 ## When to Use
 
 - **First time**: Bootstrap the narrative for a codebase

@@ -90,29 +90,11 @@ fi
 # Extract and inject key context (narrative sections, directory structure)
 CONTEXT_DATA=$(uv run "${SCRIPT_DIR}/extract-context.py" "${PROJECT_ROOT}" 2>/dev/null || echo "{}")
 
-# Add project root
-CONTEXT="${CONTEXT}\n\n**Project Root**: ${PROJECT_ROOT}"
+# Add project root and directory tree
+DIR_TREE=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('dir_tree', ''))" 2>/dev/null || true)
 
-# Add top-level structure
-TOP_DIRS=$(echo "${CONTEXT_DATA}" | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    dirs = data.get('top_dirs', [])
-    if dirs:
-        parts = []
-        for d in dirs[:15]:
-            if d['type'] == 'dir':
-                parts.append(f\"{d['name']}/ ({d.get('files', '?')} files)\")
-            else:
-                parts.append(d['name'])
-        print(', '.join(parts))
-except:
-    pass
-" 2>/dev/null || true)
-
-if [[ -n "${TOP_DIRS}" ]]; then
-    CONTEXT="${CONTEXT}\n**Structure**: ${TOP_DIRS}"
+if [[ -n "${DIR_TREE}" ]]; then
+    CONTEXT="${CONTEXT}\n\n**Project Structure**:\n\`\`\`\n${DIR_TREE}\n\`\`\`"
 fi
 
 # Inject narrative sections if they exist

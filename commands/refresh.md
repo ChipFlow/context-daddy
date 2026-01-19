@@ -32,6 +32,11 @@ Read the current narrative, then write an updated version to `.claude/narrative.
 - **How It Works**: Update if architecture/structure changed significantly.
 - **Summary**: Rarely needs updating unless project's core purpose evolved.
 
+**LENGTH LIMITS** (sections are auto-truncated when injected):
+- **Summary**: ~2-3 sentences, under 300 chars
+- **Current Foci**: 2-4 bullets, under 400 chars
+- **Dragons**: Key warnings, under 300 chars
+
 If the session didn't change much about our understanding, the narrative can stay mostly the same.
 The goal is a **living document** that reflects current understanding, not a log of everything.
 

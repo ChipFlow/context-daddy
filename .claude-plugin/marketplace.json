@@ -9,7 +9,7 @@
       "name": "context-daddy",
       "source": "./",
       "description": "Your codebase's context needs a responsible adult. Fast code exploration, living project narratives, and tribal knowledge that survives across sessions.",
-      "version": "0.10.3",
+      "version": "0.10.4",
       "author": {
         "name": "Robert Taylor"
       },

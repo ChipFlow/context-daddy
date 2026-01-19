@@ -39,31 +39,17 @@ rm -f "${MARKER_FILE}"
 CONTEXT_DATA=$(uv run "${SCRIPT_DIR}/extract-context.py" "${PROJECT_ROOT}" 2>/dev/null || echo "{}")
 
 # Build refresh instructions with injected context
-INSTRUCTIONS="🔄 **Context Refresh After Compaction**
+DIR_TREE=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('dir_tree', ''))" 2>/dev/null || true)
 
-**Project Root**: ${PROJECT_ROOT}"
+INSTRUCTIONS="🔄 **Context Refresh After Compaction**"
 
-# Add top-level structure
-TOP_DIRS=$(echo "${CONTEXT_DATA}" | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    dirs = data.get('top_dirs', [])
-    if dirs:
-        parts = []
-        for d in dirs[:12]:
-            if d['type'] == 'dir':
-                parts.append(f\"{d['name']}/ ({d.get('files', '?')} files)\")
-            else:
-                parts.append(d['name'])
-        print(', '.join(parts))
-except:
-    pass
-" 2>/dev/null || true)
-
-if [[ -n "${TOP_DIRS}" ]]; then
+if [[ -n "${DIR_TREE}" ]]; then
     INSTRUCTIONS="${INSTRUCTIONS}
-**Structure**: ${TOP_DIRS}"
+
+**Project Structure**:
+\`\`\`
+${DIR_TREE}
+\`\`\`"
 fi
 
 # Inject narrative sections

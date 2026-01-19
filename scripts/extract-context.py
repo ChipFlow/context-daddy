@@ -35,25 +35,51 @@ def extract_section(content: str, section_name: str, max_chars: int = 500) -> st
     return ""
 
 
-def get_top_dirs(project_root: Path) -> list[dict]:
-    """Get top-level directory structure."""
-    dirs = []
-    try:
-        for item in sorted(project_root.iterdir()):
-            if item.name.startswith('.'):
-                continue
-            if item.is_dir():
-                # Count files in dir
-                try:
-                    file_count = sum(1 for _ in item.rglob('*') if _.is_file())
-                except:
-                    file_count = 0
-                dirs.append({"name": item.name, "type": "dir", "files": file_count})
-            elif item.is_file():
-                dirs.append({"name": item.name, "type": "file"})
-    except:
-        pass
-    return dirs[:20]  # Limit to 20 entries
+def get_dir_tree(project_root: Path, max_depth: int = 2) -> str:
+    """Get directory tree with depth limit, similar to `tree -L 2`."""
+    lines = []
+
+    def walk(path: Path, prefix: str = "", depth: int = 0):
+        if depth > max_depth:
+            return
+        try:
+            items = sorted(path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
+            # Filter hidden, cache dirs, and common noise
+            skip_names = {'.', '__pycache__', 'node_modules', '.git', 'venv', '.venv',
+                         'dist', 'build', '.tox', '.pytest_cache', '.mypy_cache',
+                         'target', '.cargo', '*.egg-info'}
+            items = [i for i in items if not i.name.startswith('.')
+                     and i.name not in skip_names
+                     and not i.name.endswith('.egg-info')]
+            if len(items) > 10 and depth > 0:
+                items = items[:8]
+                items.append(None)  # Marker for "..."
+
+            for i, item in enumerate(items):
+                is_last = (i == len(items) - 1)
+                connector = "└── " if is_last else "├── "
+
+                if item is None:
+                    lines.append(f"{prefix}{connector}...")
+                    continue
+
+                if item.is_dir():
+                    lines.append(f"{prefix}{connector}{item.name}/")
+                    extension = "    " if is_last else "│   "
+                    walk(item, prefix + extension, depth + 1)
+                else:
+                    lines.append(f"{prefix}{connector}{item.name}")
+        except:
+            pass
+
+    lines.append(f"{project_root.name}/")
+    walk(project_root, "", 0)
+
+    # Limit total lines
+    if len(lines) > 30:
+        lines = lines[:28] + ["...", f"({len(lines) - 28} more items)"]
+
+    return "\n".join(lines)
 
 
 def main():
@@ -68,7 +94,7 @@ def main():
     result = {
         "project_root": str(project_root),
         "project_name": project_root.name,
-        "top_dirs": get_top_dirs(project_root),
+        "dir_tree": get_dir_tree(project_root, max_depth=2),
     }
 
     if narrative_file.exists():
