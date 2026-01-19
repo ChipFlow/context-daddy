@@ -87,10 +87,52 @@ except:
     fi
 fi
 
-# Add narrative prompt if exists
-NARRATIVE="${CLAUDE_DIR}/narrative.md"
-if [[ -f "${NARRATIVE}" ]]; then
-    CONTEXT="${CONTEXT}\n\n📖 **Project narrative exists** - Read .claude/narrative.md for project story, dragons, and tribal knowledge."
+# Extract and inject key context (narrative sections, directory structure)
+CONTEXT_DATA=$(uv run "${SCRIPT_DIR}/extract-context.py" "${PROJECT_ROOT}" 2>/dev/null || echo "{}")
+
+# Add project root
+CONTEXT="${CONTEXT}\n\n**Project Root**: ${PROJECT_ROOT}"
+
+# Add top-level structure
+TOP_DIRS=$(echo "${CONTEXT_DATA}" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    dirs = data.get('top_dirs', [])
+    if dirs:
+        parts = []
+        for d in dirs[:15]:
+            if d['type'] == 'dir':
+                parts.append(f\"{d['name']}/ ({d.get('files', '?')} files)\")
+            else:
+                parts.append(d['name'])
+        print(', '.join(parts))
+except:
+    pass
+" 2>/dev/null || true)
+
+if [[ -n "${TOP_DIRS}" ]]; then
+    CONTEXT="${CONTEXT}\n**Structure**: ${TOP_DIRS}"
+fi
+
+# Inject narrative sections if they exist
+HAS_NARRATIVE=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('has_narrative', False))" 2>/dev/null || echo "False")
+
+if [[ "${HAS_NARRATIVE}" == "True" ]]; then
+    NARRATIVE_SUMMARY=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('narrative_summary', ''))" 2>/dev/null || true)
+    NARRATIVE_FOCI=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('narrative_foci', ''))" 2>/dev/null || true)
+    NARRATIVE_DRAGONS=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('narrative_dragons', ''))" 2>/dev/null || true)
+
+    if [[ -n "${NARRATIVE_SUMMARY}" ]]; then
+        CONTEXT="${CONTEXT}\n\n📖 **Project Summary**: ${NARRATIVE_SUMMARY}"
+    fi
+    if [[ -n "${NARRATIVE_FOCI}" ]]; then
+        CONTEXT="${CONTEXT}\n\n🎯 **Current Foci**:\n${NARRATIVE_FOCI}"
+    fi
+    if [[ -n "${NARRATIVE_DRAGONS}" ]]; then
+        CONTEXT="${CONTEXT}\n\n🐉 **Dragons & Gotchas**:\n${NARRATIVE_DRAGONS}"
+    fi
+    CONTEXT="${CONTEXT}\n\n(Full narrative in .claude/narrative.md)"
 fi
 
 # Add learnings count
