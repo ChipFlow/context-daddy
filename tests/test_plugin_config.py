@@ -19,7 +19,8 @@ HOOKS_ROOT = PROJECT_ROOT / "hooks"
 SCRIPTS_ROOT = PROJECT_ROOT / "scripts"
 SERVERS_ROOT = PROJECT_ROOT / "servers"
 
-REQUIRED_PLUGIN_FIELDS = ["name", "version", "description", "author", "keywords", "repository", "hooks"]
+# Note: hooks are autodiscovered from hooks/hooks.json, NOT in plugin.json
+REQUIRED_PLUGIN_FIELDS = ["name", "version", "description", "author", "keywords", "repository"]
 VALID_HOOK_TYPES = ["SessionStart", "SessionEnd", "PreCompact", "Stop", "PreToolUse", "UserPromptSubmit"]
 
 def test_plugin_json_required_fields():
@@ -50,47 +51,22 @@ def test_plugin_json_required_fields():
             print(f"  ✓ {field}: {value}")
     return True
 
-def test_plugin_json_hooks_field():
-    """Validate hooks field points to existing file."""
+def test_hooks_json_exists():
+    """Validate hooks/hooks.json exists at project root (autodiscovered by Claude Code)."""
     print("\n" + "=" * 60)
-    print("TEST 2: plugin.json hooks field validity")
+    print("TEST 2: hooks/hooks.json existence")
     print("=" * 60)
 
-    plugin_path = PLUGIN_ROOT / "plugin.json"
-    with open(plugin_path) as f:
-        plugin = json.load(f)
+    # Hooks are autodiscovered from hooks/hooks.json at plugin root
+    # NOT configured in plugin.json
+    hooks_path = HOOKS_ROOT / "hooks.json"
 
-    if "hooks" not in plugin:
-        print("❌ FAIL: 'hooks' field missing from plugin.json")
-        print("  This is the v0.9.4 bug - hooks won't load without this field!")
+    if not hooks_path.exists():
+        print(f"❌ FAIL: hooks/hooks.json not found at {hooks_path}")
+        print("  Hooks won't load - Claude Code autodiscovers from hooks/hooks.json")
         return False
 
-    hooks_ref = plugin["hooks"]
-    print(f"Hooks reference: {hooks_ref}")
-
-    # Resolve ${CLAUDE_PLUGIN_ROOT} in path
-    # In development, hooks are at PROJECT_ROOT/hooks/hooks.json
-    # When installed, they're at PLUGIN_ROOT/hooks/hooks.json
-    if "${CLAUDE_PLUGIN_ROOT}" in hooks_ref:
-        # Try both locations
-        rel_path = hooks_ref.replace("${CLAUDE_PLUGIN_ROOT}/", "")
-        hooks_path_plugin = PLUGIN_ROOT / rel_path
-        hooks_path_project = PROJECT_ROOT / rel_path
-
-        if hooks_path_project.exists():
-            hooks_path = hooks_path_project
-        elif hooks_path_plugin.exists():
-            hooks_path = hooks_path_plugin
-        else:
-            print(f"❌ FAIL: hooks.json not found at {hooks_path_project} or {hooks_path_plugin}")
-            return False
-    else:
-        hooks_path = Path(hooks_ref)
-        if not hooks_path.exists():
-            print(f"❌ FAIL: hooks.json not found at {hooks_path}")
-            return False
-
-    print(f"✅ PASS: hooks.json exists at {hooks_path}")
+    print(f"✅ PASS: hooks/hooks.json exists at {hooks_path}")
     return True
 
 def test_hooks_json_structure():
@@ -278,7 +254,7 @@ def test_marketplace_version_match():
 if __name__ == "__main__":
     tests = [
         test_plugin_json_required_fields,
-        test_plugin_json_hooks_field,
+        test_hooks_json_exists,
         test_hooks_json_structure,
         test_hook_scripts_exist,
         test_version_format,
