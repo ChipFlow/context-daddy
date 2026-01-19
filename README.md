@@ -29,7 +29,7 @@ claude mcp list  # Should show: repo-map: ✓ Connected
 
 # Generate a narrative for your project
 cd /path/to/your-project
-/context-daddy:generate-narrative
+/context-daddy:story
 ```
 
 Or load directly without installing:
@@ -62,8 +62,8 @@ Not changelogs. **Stories**:
 - **Open Questions** - Things we're still figuring out
 
 ```bash
-/context-daddy:generate-narrative  # Bootstrap from git history
-/context-daddy:update-narrative    # Revise after sessions
+/context-daddy:story    # Bootstrap from git history
+/context-daddy:refresh  # Revise after sessions
 ```
 
 Written in "we" voice. Opinionated. Updated after context compaction.
@@ -79,12 +79,14 @@ Hard-won insights that persist:
 
 | Command | Purpose |
 |---------|---------|
-| `/context-daddy:generate-narrative` | Bootstrap narrative from git |
-| `/context-daddy:update-narrative` | Update after a session |
-| `/context-daddy:mcp-help` | MCP tools guide |
-| `/context-daddy:repo-map` | Regenerate repo map |
+| `/context-daddy:story` | Bootstrap narrative from git |
+| `/context-daddy:refresh` | Update narrative after a session |
+| `/context-daddy:readme` | Generate README from narrative |
+| `/context-daddy:map` | Regenerate repo map |
+| `/context-daddy:scan` | Regenerate project manifest |
 | `/context-daddy:status` | Indexing status |
-| `/context-daddy:learnings` | Manage learnings |
+| `/context-daddy:learn` | Manage learnings |
+| `/context-daddy:help` | MCP tools guide |
 
 ## How It Works
 

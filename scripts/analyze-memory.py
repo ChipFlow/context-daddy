@@ -24,11 +24,11 @@ from pathlib import Path
 
 import psutil
 
-# Import parsing functions from generate-repo-map.py
+# Import parsing functions from map.py
 import importlib.util
 spec = importlib.util.spec_from_file_location(
     "generate_repo_map",
-    Path(__file__).parent / "generate-repo-map.py"
+    Path(__file__).parent / "map.py"
 )
 generate_repo_map = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(generate_repo_map)

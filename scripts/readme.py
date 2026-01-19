@@ -15,8 +15,8 @@ Uses the narrative.md to create a user-focused README with:
 - Dragons & Open Questions
 
 Usage:
-    uv run scripts/generate-readme.py [project_root]
-    uv run scripts/generate-readme.py --update  # Update existing README
+    uv run scripts/readme.py [project_root]
+    uv run scripts/readme.py --update  # Update existing README
 """
 
 import sys
@@ -155,7 +155,7 @@ def main():
 
     if not narrative_file.exists():
         print(f"Error: No narrative found at {narrative_file}", file=sys.stderr)
-        print("Run generate-narrative.py first.", file=sys.stderr)
+        print("Run story.py first.", file=sys.stderr)
         sys.exit(1)
 
     narrative = narrative_file.read_text()

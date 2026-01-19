@@ -50,7 +50,7 @@ def get_indexer():
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "generate_repo_map",
-            SCRIPT_DIR / "generate-repo-map.py"
+            SCRIPT_DIR / "map.py"
         )
         _indexer_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(_indexer_module)
@@ -327,7 +327,7 @@ def do_index() -> tuple[bool, str]:
 
         # Spawn subprocess to run the indexer with resource limits
         proc = subprocess.Popen(
-            ["uv", "run", str(SCRIPT_DIR / "generate-repo-map.py"), str(project_root)],
+            ["uv", "run", str(SCRIPT_DIR / "map.py"), str(project_root)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

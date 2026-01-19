@@ -5,7 +5,7 @@ Regenerate the project manifest to refresh understanding of this project's struc
 Run this command:
 
 ```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-manifest.py
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/scan.py
 ```
 
 The manifest captures:

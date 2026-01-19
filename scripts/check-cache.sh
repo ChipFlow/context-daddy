@@ -15,7 +15,7 @@ LAST_CHECK="${CLAUDE_DIR}/.last-cache-check"
 CHECK_INTERVAL=30
 
 # Skip if already indexing (check running processes)
-if pgrep -f "generate-repo-map.py.*${PROJECT_ROOT}" >/dev/null 2>&1; then
+if pgrep -f "map.py.*${PROJECT_ROOT}" >/dev/null 2>&1; then
     exit 0
 fi
 
@@ -36,7 +36,7 @@ fi
 NEEDS_REINDEX=false
 REASON=""
 
-# Expected cache version - must match CACHE_VERSION in generate-repo-map.py
+# Expected cache version - must match CACHE_VERSION in map.py
 EXPECTED_CACHE_VERSION=3
 
 # Check 1: Cache version mismatch
@@ -95,7 +95,7 @@ if [[ "${NEEDS_REINDEX}" == "true" ]]; then
 
     # Start background reindex
     (
-        nohup uv run "${SCRIPT_DIR}/generate-repo-map.py" "${PROJECT_ROOT}" \
+        nohup uv run "${SCRIPT_DIR}/map.py" "${PROJECT_ROOT}" \
             > "${CLAUDE_DIR}/repo-map-build.log" 2>&1 &
     ) &
 fi

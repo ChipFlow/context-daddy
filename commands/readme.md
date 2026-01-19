@@ -7,13 +7,13 @@ Generate or update the project README based on the narrative document.
 You need a narrative first. If `.claude/narrative.md` doesn't exist:
 
 ```bash
-/context-daddy:generate-narrative
+/context-daddy:story
 ```
 
 ## Generating README
 
 ```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-readme.py
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/readme.py
 ```
 
 This creates a README with:
@@ -29,7 +29,7 @@ This creates a README with:
 To update while preserving project-specific content:
 
 ```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-readme.py --update
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/readme.py --update
 ```
 
 ## Dry Run
@@ -37,7 +37,7 @@ uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-readme.py --update
 Preview without saving:
 
 ```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-readme.py --dry-run
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/readme.py --dry-run
 ```
 
 ## Structure

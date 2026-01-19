@@ -13,7 +13,7 @@ Helps Claude Code understand what already exists before implementing new feature
 Supports Python, C++, and Rust.
 
 Usage:
-    uv run generate-repo-map.py [directory]
+    uv run map.py [directory]
 """
 
 import ast

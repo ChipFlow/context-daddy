@@ -11,7 +11,7 @@ the story of how a codebase evolved - not a changelog, but a coherent
 narrative that helps someone understand WHY things are the way they are.
 
 Usage:
-    uv run scripts/generate-narrative.py [project_root]
+    uv run scripts/story.py [project_root]
 """
 
 import subprocess

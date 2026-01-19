@@ -7,7 +7,7 @@ You are updating the project's living narrative document based on what we learne
 First check if `.claude/narrative.md` exists. If not, generate one first:
 
 ```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-narrative.py
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/story.py
 ```
 
 Then proceed with the update.
@@ -31,7 +31,7 @@ Example summaries:
 Once you have a session summary, run:
 
 ```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/update-narrative.py "YOUR SESSION SUMMARY HERE"
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/refresh.py "YOUR SESSION SUMMARY HERE"
 ```
 
 The script will:

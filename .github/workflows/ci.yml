@@ -139,17 +139,17 @@ jobs:
           }
           EOF
 
-      - name: Run generate-manifest.py
+      - name: Run scan.py
         run: |
           cd test-project
-          uv run ../scripts/generate-manifest.py .
+          uv run ../scripts/scan.py .
           echo "--- Manifest content ---"
           cat .claude/project-manifest.json
 
-      - name: Run generate-repo-map.py
+      - name: Run map.py
         run: |
           cd test-project
-          uv run ../scripts/generate-repo-map.py . 2>&1 | head -100
+          uv run ../scripts/map.py . 2>&1 | head -100
           echo "--- Repo map generated ---"
 
       - name: Verify manifest output
@@ -393,7 +393,7 @@ jobs:
           EOF
 
           # Re-run repo map
-          uv run ../scripts/generate-repo-map.py . 2>&1 | tail -10
+          uv run ../scripts/map.py . 2>&1 | tail -10
 
           # Verify new function was picked up in markdown
           if ! grep -q "new_function" .claude/repo-map.md; then

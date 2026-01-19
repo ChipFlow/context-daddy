@@ -49,7 +49,7 @@ if [[ -n "${HAS_NARRATIVE}" ]]; then
     INSTRUCTIONS="${INSTRUCTIONS}
 
 📖 **Update the project narrative** (if significant learning occurred):
-   Run \`/context-daddy:update-narrative\` with a brief summary of:
+   Run \`/context-daddy:refresh\` with a brief summary of:
    • What we worked on and key decisions made
    • New understanding or insights gained
    • Any dragons discovered or questions answered"

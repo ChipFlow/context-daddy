@@ -16,7 +16,7 @@ This creates `.claude/narrative.md` - a living document that tells the **story**
 ## Running Generation
 
 ```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-narrative.py
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/story.py
 ```
 
 This will:

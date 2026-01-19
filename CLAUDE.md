@@ -17,8 +17,8 @@ Users need to run `claude plugin update` to get changes, and this only works if 
 claude --plugin-dir /path/to/context-daddy
 
 # Or run scripts directly
-uv run scripts/generate-repo-map.py /path/to/test-project
-uv run scripts/generate-manifest.py /path/to/test-project
+uv run scripts/map.py /path/to/test-project
+uv run scripts/scan.py /path/to/test-project
 ```
 
 ## Hook Structure

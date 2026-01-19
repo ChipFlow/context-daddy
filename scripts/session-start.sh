@@ -13,7 +13,7 @@ CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 mkdir -p "${CLAUDE_DIR}"
 
 # Generate project manifest (quick, runs synchronously)
-uv run "${SCRIPT_DIR}/generate-manifest.py" "${PROJECT_ROOT}" >/dev/null 2>&1 || true
+uv run "${SCRIPT_DIR}/scan.py" "${PROJECT_ROOT}" >/dev/null 2>&1 || true
 
 REPO_MAP="${CLAUDE_DIR}/repo-map.md"
 DB_FILE="${CLAUDE_DIR}/repo-map.db"

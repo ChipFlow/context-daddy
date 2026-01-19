@@ -204,7 +204,7 @@ def run_all_tests():
 
     if not TEST_DB.exists():
         print(f"\n❌ ERROR: Database not found at {TEST_DB}")
-        print("Run: uv run scripts/generate-repo-map.py tests/test_codebase")
+        print("Run: uv run scripts/map.py tests/test_codebase")
         return False
 
     results = []

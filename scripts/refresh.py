@@ -99,7 +99,7 @@ def main():
     # Get current narrative
     if not narrative_file.exists():
         print(f"Error: No narrative found at {narrative_file}", file=sys.stderr)
-        print("Run generate-narrative.py first to create initial narrative.", file=sys.stderr)
+        print("Run story.py first to create initial narrative.", file=sys.stderr)
         sys.exit(1)
 
     current_narrative = narrative_file.read_text()

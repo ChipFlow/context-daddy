@@ -8,13 +8,13 @@ Run this command to regenerate:
 # Kill ALL repo-map processes for this project
 PROJECT_PATH="${PWD}"
 echo "Checking for existing repo-map processes..."
-PIDS=$(pgrep -f "generate-repo-map.py.*${PROJECT_PATH}" 2>/dev/null || true)
+PIDS=$(pgrep -f "map.py.*${PROJECT_PATH}" 2>/dev/null || true)
 if [[ -n "${PIDS}" ]]; then
     echo "Stopping existing processes: ${PIDS}"
     echo "${PIDS}" | xargs kill 2>/dev/null || true
     sleep 1
     # Force kill any remaining
-    PIDS=$(pgrep -f "generate-repo-map.py.*${PROJECT_PATH}" 2>/dev/null || true)
+    PIDS=$(pgrep -f "map.py.*${PROJECT_PATH}" 2>/dev/null || true)
     if [[ -n "${PIDS}" ]]; then
         echo "${PIDS}" | xargs kill -9 2>/dev/null || true
     fi
@@ -25,7 +25,7 @@ python3 -c "
 import json
 from pathlib import Path
 
-CURRENT_VERSION = 2  # Must match CACHE_VERSION in generate-repo-map.py
+CURRENT_VERSION = 2  # Must match CACHE_VERSION in map.py
 
 cache_path = Path('.claude/repo-map-cache.json')
 if cache_path.exists():
@@ -42,7 +42,7 @@ if cache_path.exists():
 
 # Run in foreground with live output
 echo "Regenerating repo map..."
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/generate-repo-map.py 2>&1
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/map.py 2>&1
 
 # Show summary with clash count
 if [[ -f .claude/repo-map.md ]]; then
