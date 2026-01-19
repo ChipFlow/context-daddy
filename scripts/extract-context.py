@@ -20,13 +20,18 @@ import sys
 from pathlib import Path
 
 
-def extract_section(content: str, section_name: str) -> str:
-    """Extract a section from markdown by heading."""
+def extract_section(content: str, section_name: str, max_chars: int = 500) -> str:
+    """Extract a section from markdown by heading, with truncation."""
     # Match ## Section Name through next ## or end
     pattern = rf"^## {re.escape(section_name)}\s*\n(.*?)(?=^## |\Z)"
     match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
     if match:
-        return match.group(1).strip()
+        text = match.group(1).strip()
+        if len(text) > max_chars:
+            # Truncate at word boundary
+            truncated = text[:max_chars].rsplit(' ', 1)[0]
+            return truncated + "..."
+        return text
     return ""
 
 
@@ -68,9 +73,13 @@ def main():
 
     if narrative_file.exists():
         content = narrative_file.read_text()
-        result["narrative_summary"] = extract_section(content, "Summary")
-        result["narrative_foci"] = extract_section(content, "Current Foci")
-        result["narrative_dragons"] = extract_section(content, "Dragons & Gotchas")
+        # Truncate sections to prevent context bloat
+        # Summary: concise overview (300 chars)
+        # Foci: current work areas (400 chars)
+        # Dragons: key warnings only (300 chars)
+        result["narrative_summary"] = extract_section(content, "Summary", max_chars=300)
+        result["narrative_foci"] = extract_section(content, "Current Foci", max_chars=400)
+        result["narrative_dragons"] = extract_section(content, "Dragons & Gotchas", max_chars=300)
         result["has_narrative"] = True
     else:
         result["has_narrative"] = False
