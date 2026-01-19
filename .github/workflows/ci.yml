@@ -486,8 +486,8 @@ jobs:
 
       - name: Install plugin
         run: |
-          echo "Installing context-tools plugin..."
-          claude plugin install context-tools
+          echo "Installing context-daddy plugin..."
+          claude plugin install context-daddy
           echo "Plugin installed successfully"
 
       - name: Test plugin loads with --plugin-dir

@@ -10,7 +10,7 @@ jobs:
   check-secrets:
     name: Check if secrets are available
     runs-on: ubuntu-latest
-    if: ${{ github.repository == 'ChipFlow/claude-context-tools' }}
+    if: ${{ github.repository == 'ChipFlow/context-daddy' }}
     outputs:
       has-api-key: ${{ steps.check.outputs.has-api-key }}
     steps:

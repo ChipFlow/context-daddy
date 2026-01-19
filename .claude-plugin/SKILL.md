@@ -43,8 +43,8 @@ The MCP server will restart with the new plugin configuration.
 ```
 
 **When to give this instruction:**
-- Immediately after the user runs `/plugin install context-tools`
-- Immediately after the user runs `/plugin update context-tools`
+- Immediately after the user runs `/plugin install context-daddy`
+- Immediately after the user runs `/plugin update context-daddy`
 - When the user tries to use MCP tools but they're not available (and you suspect they just installed)
 
 **Why this matters:**

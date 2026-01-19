@@ -112,12 +112,12 @@ jobs:
             echo "⚠️  project-manifest.json not created (hook may not have triggered generate-manifest)"
           fi
 
-          # Check if Claude mentioned anything about context-tools or project context
+          # Check if Claude mentioned anything about context-daddy or project context
           # The systemMessage goes to Claude's context, so Claude might reference it
-          if grep -qi "context-tools\|repo.map\|mcp\|symbol" session-start-output.txt; then
-            echo "✅ Claude appears to have received context-tools context"
+          if grep -qi "context-daddy\|repo.map\|mcp\|symbol" session-start-output.txt; then
+            echo "✅ Claude appears to have received context-daddy context"
           else
-            echo "⚠️  Claude response doesn't mention context-tools features"
+            echo "⚠️  Claude response doesn't mention context-daddy features"
           fi
 
           # Check for .claude directory (created by hook)
