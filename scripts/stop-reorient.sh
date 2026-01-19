@@ -34,25 +34,55 @@ fi
 # Remove marker immediately (so we only do this once)
 rm -f "${MARKER_FILE}"
 
+# Check if narrative exists
+HAS_NARRATIVE=""
+if [[ -f "${CLAUDE_DIR}/narrative.md" ]]; then
+    HAS_NARRATIVE="yes"
+fi
+
 # Build refresh instructions
 INSTRUCTIONS="🔄 **Context Refresh Required After Compaction**
 
-**FIRST: Update learnings if you built anything significant this session:**
-📝 Update ${CLAUDE_DIR}/learnings.md with:
+**STEP 1: Capture what we learned this session**"
+
+if [[ -n "${HAS_NARRATIVE}" ]]; then
+    INSTRUCTIONS="${INSTRUCTIONS}
+
+📖 **Update the project narrative** (if significant learning occurred):
+   Run \`/context-tools:update-narrative\` with a brief summary of:
+   • What we worked on and key decisions made
+   • New understanding or insights gained
+   • Any dragons discovered or questions answered"
+fi
+
+INSTRUCTIONS="${INSTRUCTIONS}
+
+📝 **Update ${CLAUDE_DIR}/learnings.md** with:
    • New features/APIs implemented
    • Integration points added (e.g., Python bindings, new modules)
    • Solution approaches discussed and agreed with user
    • Non-obvious design decisions or debugging insights
 
-**THEN: Restore context by reading files in order:**
+**STEP 2: Restore context by reading files in order:**
 
-1. **Read ${CLAUDE_DIR}/CLAUDE.md** (if it exists) - Project rules and guidelines
-2. **Read ${CLAUDE_DIR}/learnings.md** (if it exists) - Recent work and discoveries
-3. **Query MCP tools to refresh project structure:**
+1. **Read ${CLAUDE_DIR}/CLAUDE.md** (if it exists) - Project rules and guidelines"
+
+if [[ -n "${HAS_NARRATIVE}" ]]; then
+    INSTRUCTIONS="${INSTRUCTIONS}
+2. **Read ${CLAUDE_DIR}/narrative.md** - Project story, current foci, and dragons
+3. **Read ${CLAUDE_DIR}/learnings.md** (if it exists) - Recent work and discoveries"
+else
+    INSTRUCTIONS="${INSTRUCTIONS}
+2. **Read ${CLAUDE_DIR}/learnings.md** (if it exists) - Recent work and discoveries"
+fi
+
+INSTRUCTIONS="${INSTRUCTIONS}
+
+**STEP 3: Query MCP tools to refresh project structure:**
    - Use \`mcp__plugin_context-tools_repo-map__list_files(\"*.py\")\` to see indexed files
    - Use \`mcp__plugin_context-tools_repo-map__search_symbols(\"*\", limit=10)\` to see key symbols
 
-After reading these files and querying MCP tools, you'll have full context restored. Then continue with the current task."
+After completing these steps, you'll have full context restored. Then continue with the current task."
 
 # Escape for JSON
 INSTRUCTIONS_ESCAPED=$(echo -n "$INSTRUCTIONS" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | sed 's/^"//;s/"$//')
