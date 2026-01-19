@@ -4,92 +4,82 @@
 
 [![CI](https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml/badge.svg)](https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml)
 
-A Claude Code plugin that gives Claude superpowers for understanding your codebase:
-- **Fast code exploration** via MCP tools (10-100x faster than grep for symbols)
-- **Living project narratives** that capture the "why", not just the "what"
-- **Tribal knowledge retention** that survives context compaction
+We're building a plugin that fundamentally changes how Claude explores and comprehends large codebases. By combining tree-sitter parsing, intelligent caching, and MCP tools, we provide fast, targeted code retrieval without overwhelming context windows.
 
-## What's New in v0.10.0: Narrative Documentation
+But we realized something: understanding code isn't just about parsing syntax. It's about capturing the *stories* - the "here be dragons", the "we did X because Y", the "this is WTF but it works". That tribal knowledge usually lives in people's heads and gets lost.
 
-Teams build up stories about their codebases - "here be dragons", "we did X because Y", "this is WTF but works". That knowledge usually lives in people's heads and gets lost.
+**context daddy** captures both: fast code exploration AND living project narratives.
 
-**context daddy** now captures and evolves these narratives:
+## The Journey
 
-```bash
-# Bootstrap a narrative from git history
-/context-daddy:generate-narrative
+We started simple: parse code with tree-sitter, generate repo maps. Then reality hit.
 
-# Update after a session with significant learning
-/context-daddy:update-narrative
-```
+**v0.3 - Memory explosion.** Large codebases broke everything. We moved to incremental caching and parallel parsing with resource limits.
 
-The narrative is a living document with: Summary, Current Foci, How It Works, The Story So Far, Dragons & Gotchas, and Open Questions. Written in "we" voice. Opinionated. Useful.
+**v0.4 - Static maps weren't enough.** Claude needed fast, targeted access. We built an MCP server - not just generating maps, but a live query interface for code exploration.
+
+**v0.6-v0.8 - Process management nightmares.** Zombie indexing processes, resource leaks, conflicts. Multiple iterations of cleanup strategies before landing on isolated subprocesses with watchdog monitoring.
+
+**v0.9 - User experience focus.** Database versioning for seamless upgrades. Simpler Stop hook pattern for post-compaction guidance.
+
+**v0.10 - Narrative documentation.** The philosophical shift. Capturing not just WHAT code does, but WHY it exists and what we've learned building it.
 
 ## Features
 
-### 🔍 Fast Symbol Search (MCP Tools)
+### 🔍 Fast Symbol Search
 
-Once installed, Claude has lightning-fast code exploration:
+MCP tools that are 10-100x faster than grep for finding code:
 
 ```
-search_symbols("*Handler")     → Find all handler classes
-get_symbol_content("AuthService")  → Get full source code
+search_symbols("*Handler")         → Find all handler classes
+get_symbol_content("AuthService")  → Get full source with docstrings
 get_file_symbols("src/api.py")     → List everything in a file
-list_files("*.py")             → Find files by pattern
+list_files("*.py")                 → Find files by pattern
 ```
 
-These use a pre-built SQLite index. Way faster than grep for finding code.
+Pre-built SQLite index with FTS5 full-text search. Claude can explore your codebase without drowning in context.
 
 ### 📖 Living Narratives
 
-Not changelogs. Not API docs. **Stories** about your codebase:
+Not changelogs. Not API docs. **Stories**:
 
-- What we're working on now (Current Foci)
-- How we got here (The Story So Far)
-- Where the dragons lurk (Dragons & Gotchas)
-- What we're still figuring out (Open Questions)
+- **Summary** - What this is and why it matters
+- **Current Foci** - What we're actively working on
+- **How It Works** - Architecture in plain language
+- **The Story So Far** - How we got here (the journey, not a commit log)
+- **Dragons & Gotchas** - Warnings for future-us
+- **Open Questions** - Things we're still figuring out
 
-Updated automatically after context compaction, or manually via slash command.
+Bootstrap from git history, update after sessions. Written in "we" voice. Opinionated. Useful.
+
+```bash
+/context-daddy:generate-narrative  # Bootstrap from git history
+/context-daddy:update-narrative    # Revise after significant sessions
+```
 
 ### 🧠 Learning Retention
 
-Discoveries persist across sessions:
+Hard-won insights persist across sessions and context compactions:
 - Project learnings in `.claude/learnings.md`
 - Global learnings in `~/.claude/learnings.md`
-- Prompted to save before context compaction
+- Prompted to save before compaction wipes context
 
 ### 📊 Project Awareness
 
-Auto-detects your stack:
-- Languages, build system, entry points
-- Git activity summary
-- Multi-language support (Python, C++, Rust)
+Auto-detects your stack: languages, build system, entry points, git activity. Supports Python, C++, and Rust via tree-sitter.
 
 ## Installation
 
-### From GitHub (recommended)
-
 ```bash
+# From GitHub
 claude plugin marketplace add chipflow/context-daddy
 claude plugin install context-daddy
-```
 
-### From local directory
-
-```bash
-git clone https://github.com/chipflow/context-daddy.git
-claude plugin marketplace add ./context-daddy
-claude plugin install context-daddy
-```
-
-### One-off use
-
-```bash
+# Or load directly
 claude --plugin-dir ./context-daddy
 ```
 
-### Verify it's working
-
+Verify it's working:
 ```bash
 claude mcp list
 # Should show: repo-map: ... - ✓ Connected
@@ -101,42 +91,66 @@ claude mcp list
 |---------|--------------|
 | `/context-daddy:generate-narrative` | Bootstrap narrative from git history |
 | `/context-daddy:update-narrative` | Update narrative after a session |
-| `/context-daddy:mcp-help` | Guide for using MCP tools effectively |
+| `/context-daddy:mcp-help` | Guide for MCP tools vs grep |
 | `/context-daddy:repo-map` | Regenerate the repository map |
 | `/context-daddy:status` | Check indexing status |
-| `/context-daddy:learnings` | View and manage project learnings |
+| `/context-daddy:learnings` | View and manage learnings |
 
-## How It Works
+## Architecture
 
-### Hooks
+Three main components:
 
-- **SessionStart**: Loads context, shows status, connects MCP tools
-- **PreCompact**: Creates marker for post-compaction reorientation
-- **Stop**: After compaction, guides Claude to restore context and update narrative
+1. **Tree-sitter indexing** - Parses code into semantic symbols
+2. **SQLite + FTS5** - Fast retrieval and full-text search
+3. **MCP server** - Exposes tools for Claude to query
 
-### Generated Files
+Multiprocess design: heavy indexing runs in isolated subprocesses (4GB memory limit, 20 min CPU limit, watchdog monitoring). MCP server stays responsive.
+
+Hooks into Claude's lifecycle:
+- **SessionStart** - Loads context, connects MCP
+- **PreCompact** - Marks for post-compaction reorientation
+- **Stop** - After compaction, guides context restoration and narrative updates
+
+## Generated Files
 
 ```
 .claude/
 ├── narrative.md           # Living project story
 ├── narrative-data.json    # Git data for narrative generation
 ├── project-manifest.json  # Build system, languages, entry points
-├── repo-map.db            # SQLite index for fast symbol lookup
+├── repo-map.db            # SQLite index for symbol lookup
 ├── learnings.md           # Project-specific learnings
 └── logs/
-    └── repo-map-server.log  # MCP server logs
+    └── repo-map-server.log
 ```
 
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/) - Python package manager
 - Python 3.10+
-- `ANTHROPIC_API_KEY` environment variable (for narrative generation)
+- `ANTHROPIC_API_KEY` (for narrative generation)
+
+## Known Dragons 🐉
+
+**Hooks are fragile.** Autodiscovery doesn't always match plugin.json expectations. We've been bitten by this in CI.
+
+**SQLite WAL helps but isn't magic.** Database migrations need care. We moved away from heavy locking after deadlock issues.
+
+**Tree-sitter memory spikes.** Certain files cause unpredictable memory usage. Subprocess isolation is our safety net.
+
+**MCP lifecycle is underdocumented.** We've reverse-engineered when servers start/stop through trial and error.
+
+## Open Questions
+
+- Cache invalidation feels heavyweight. Filesystem watching? Git hooks?
+- How do we keep narratives from going stale?
+- Is our multiprocess architecture over-engineered?
+- FTS5 search is underutilized - what's the right UX?
 
 ## Development
 
 ```bash
-# Test locally without installing
+# Test locally
 claude --plugin-dir .
 
 # Run scripts directly
@@ -148,14 +162,10 @@ uv run scripts/generate-repo-map.py /path/to/project
 
 ```bash
 claude plugin uninstall context-daddy
-```
-
-To clean up generated files (optional):
-```bash
 rm -rf .claude/repo-map.* .claude/project-manifest.json .claude/narrative*
 ```
 
-Note: Keep `.claude/learnings.md` - that's your project's hard-won knowledge!
+Keep `.claude/learnings.md` - that's your hard-won knowledge!
 
 ## License
 
