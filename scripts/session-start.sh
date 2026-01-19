@@ -47,16 +47,16 @@ try:
 except:
     print('in progress')
 " 2>/dev/null || echo "in progress")
-    STATUS_MSG="[context-tools] ⏳ Indexing: ${PROGRESS_INFO}"
+    STATUS_MSG="[context-daddy] ⏳ Indexing: ${PROGRESS_INFO}"
 elif [[ -f "${DB_FILE}" ]]; then
     # Index exists and ready
     SYMBOL_COUNT=$(sqlite3 "${DB_FILE}" "SELECT COUNT(*) FROM symbols" 2>/dev/null || echo "0")
-    STATUS_MSG="[context-tools] ✅ Repo map ready: ${SYMBOL_COUNT} symbols indexed"
+    STATUS_MSG="[context-daddy] ✅ Repo map ready: ${SYMBOL_COUNT} symbols indexed"
 elif [[ -f "${REPO_MAP}" ]]; then
     SYMBOL_COUNT=$(grep -c "^\*\*" "${REPO_MAP}" 2>/dev/null || echo "0")
-    STATUS_MSG="[context-tools] Repo map: ${SYMBOL_COUNT} symbols"
+    STATUS_MSG="[context-daddy] Repo map: ${SYMBOL_COUNT} symbols"
 else
-    STATUS_MSG="[context-tools] MCP server will build repo map on first query"
+    STATUS_MSG="[context-daddy] MCP server will build repo map on first query"
 fi
 
 # Build context for Claude (goes to stdout, added to Claude's context)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PreCompact Hook for context-tools plugin
+# PreCompact Hook for context-daddy plugin
 # Runs before context compaction to ensure context is refreshed
 # Note: Repo map is maintained by MCP server, no need to regenerate here
 
@@ -13,7 +13,7 @@ CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 mkdir -p "${CLAUDE_DIR}"
 touch "${CLAUDE_DIR}/needs-reorientation"
 
-echo "=== PreCompact Hook (context-tools) ==="
+echo "=== PreCompact Hook (context-daddy) ==="
 echo ""
 echo "📝 IMPORTANT: Update .claude/learnings.md with what you built/learned this session:"
 echo "   • New features/APIs implemented"

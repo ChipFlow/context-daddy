@@ -49,7 +49,7 @@ if [[ -n "${HAS_NARRATIVE}" ]]; then
     INSTRUCTIONS="${INSTRUCTIONS}
 
 📖 **Update the project narrative** (if significant learning occurred):
-   Run \`/context-tools:update-narrative\` with a brief summary of:
+   Run \`/context-daddy:update-narrative\` with a brief summary of:
    • What we worked on and key decisions made
    • New understanding or insights gained
    • Any dragons discovered or questions answered"
@@ -79,8 +79,8 @@ fi
 INSTRUCTIONS="${INSTRUCTIONS}
 
 **STEP 3: Query MCP tools to refresh project structure:**
-   - Use \`mcp__plugin_context-tools_repo-map__list_files(\"*.py\")\` to see indexed files
-   - Use \`mcp__plugin_context-tools_repo-map__search_symbols(\"*\", limit=10)\` to see key symbols
+   - Use \`mcp__plugin_context-daddy_repo-map__list_files(\"*.py\")\` to see indexed files
+   - Use \`mcp__plugin_context-daddy_repo-map__search_symbols(\"*\", limit=10)\` to see key symbols
 
 After completing these steps, you'll have full context restored. Then continue with the current task."
 

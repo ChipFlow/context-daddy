@@ -1,4 +1,4 @@
-# Context Tools Plugin Development
+# context daddy 🧔 - Development Guide
 
 ## Version Bumping
 
@@ -14,7 +14,7 @@ Users need to run `claude plugin update` to get changes, and this only works if 
 
 ```bash
 # Test with --plugin-dir (no install needed)
-claude --plugin-dir /path/to/context-tools
+claude --plugin-dir /path/to/context-daddy
 
 # Or run scripts directly
 uv run scripts/generate-repo-map.py /path/to/test-project

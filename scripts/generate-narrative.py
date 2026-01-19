@@ -290,7 +290,17 @@ Remember:
         messages=[{"role": "user", "content": prompt}]
     )
 
-    return response.content[0].text
+    result = response.content[0].text
+
+    # Strip markdown code fences if Claude wrapped the output
+    if result.startswith("```markdown"):
+        result = result[len("```markdown"):].lstrip("\n")
+    if result.startswith("```"):
+        result = result[3:].lstrip("\n")
+    if result.endswith("```"):
+        result = result[:-3].rstrip("\n")
+
+    return result
 
 def main():
     if len(sys.argv) > 1:

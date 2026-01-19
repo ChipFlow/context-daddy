@@ -1,21 +1,21 @@
 {
-  "name": "chipflow-context-tools",
+  "name": "chipflow-context-daddy",
   "owner": {
     "name": "ChipFlow",
     "email": "robert@chipflow.io"
   },
   "plugins": [
     {
-      "name": "context-tools",
+      "name": "context-daddy",
       "source": "./",
-      "description": "Context management tools for Claude Code: project manifest, repo map with duplicate detection, and learnings system",
+      "description": "Your codebase's context needs a responsible adult. Fast code exploration, living project narratives, and tribal knowledge that survives across sessions.",
       "version": "0.10.0",
       "author": {
         "name": "Robert Taylor"
       },
-      "repository": "https://github.com/ChipFlow/claude-context-tools",
+      "repository": "https://github.com/ChipFlow/context-daddy",
       "license": "MIT",
-      "keywords": ["context", "documentation", "repo-map", "duplicate-detection", "learnings"]
+      "keywords": ["context", "narrative", "repo-map", "tribal-knowledge", "documentation"]
     }
   ]
 }
