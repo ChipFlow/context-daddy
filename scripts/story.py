@@ -303,10 +303,13 @@ Remember:
     return result
 
 def main():
-    if len(sys.argv) > 1:
-        project_root = Path(sys.argv[1]).resolve()
-    else:
-        project_root = Path.cwd()
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate project narrative from git history")
+    parser.add_argument("project_root", nargs="?", default=".", help="Project root directory")
+    parser.add_argument("--extract-only", action="store_true", help="Only extract git data, don't generate narrative")
+    args = parser.parse_args()
+
+    project_root = Path(args.project_root).resolve()
 
     if not (project_root / ".git").exists():
         print(f"Error: {project_root} is not a git repository", file=sys.stderr)
@@ -315,23 +318,33 @@ def main():
     # Extract git data
     git_data = extract_git_data(project_root)
 
-    # Save raw data for debugging
+    # Save raw data
     data_file = project_root / ".claude" / "narrative-data.json"
     data_file.parent.mkdir(parents=True, exist_ok=True)
     with open(data_file, "w") as f:
         json.dump(git_data, f, indent=2)
     print(f"Git data saved to {data_file}", file=sys.stderr)
 
-    # Generate narrative
-    narrative = generate_narrative(git_data)
+    if args.extract_only:
+        # Just output confirmation for Claude Code to proceed
+        print(f"Extracted {len(git_data.get('commits', []))} commits from {git_data.get('project_name', 'unknown')}")
+        print(f"Data saved to: {data_file}")
+        return
 
-    # Save narrative
-    narrative_file = project_root / ".claude" / "narrative.md"
-    with open(narrative_file, "w") as f:
-        f.write(narrative)
+    # Check for API key to generate via API
+    import os
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        narrative = generate_narrative(git_data)
 
-    print(f"Narrative saved to {narrative_file}", file=sys.stderr)
-    print(narrative)
+        narrative_file = project_root / ".claude" / "narrative.md"
+        with open(narrative_file, "w") as f:
+            f.write(narrative)
+
+        print(f"Narrative saved to {narrative_file}", file=sys.stderr)
+        print(narrative)
+    else:
+        print("No ANTHROPIC_API_KEY found. Use --extract-only and let Claude Code generate the narrative.", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

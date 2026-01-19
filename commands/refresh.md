@@ -1,65 +1,50 @@
 # Update Project Narrative
 
-You are updating the project's living narrative document based on what we learned this session.
+Update the project's living narrative based on what we learned this session.
 
-## If No Narrative Exists
+## Step 1: Check Narrative Exists
 
-First check if `.claude/narrative.md` exists. If not, generate one first:
+Read `.claude/narrative.md`. If it doesn't exist, run `/context-daddy:story` first.
 
-```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/story.py
-```
+## Step 2: Get Session Summary
 
-Then proceed with the update.
+Ask the user (or recall from the session) what we worked on:
+- Main focus/task of this session
+- Key decisions or approaches
+- New understanding or gotchas discovered
+- Any focus shifts
 
-## Creating the Session Summary
+## Step 3: Update the Narrative
 
-Before running the update script, write a brief session summary (2-5 sentences) capturing:
+Read the current narrative, then write an updated version to `.claude/narrative.md`.
 
-- **What we worked on**: The main focus/task of this session
-- **Key decisions**: Any significant choices or approaches we took
-- **What we learned**: New understanding, gotchas discovered, or insights gained
-- **Focus shifts**: If our priorities or understanding changed
+**CRITICAL RULES:**
+1. **REVISE existing sections** - don't just append new text at the end
+2. **Keep the SAME structure** (Summary, Current Foci, How It Works, The Story So Far, Dragons & Gotchas, Open Questions)
+3. **Maintain "we" voice** throughout
+4. **Be concise** - integrate information, don't bloat
 
-Example summaries:
-- "We fixed a critical bug in the OAuth flow where tokens weren't refreshing correctly. Discovered that the race condition only occurs under high load. Added retry logic with exponential backoff."
-- "Refactored the database layer to use connection pooling. This was prompted by production timeouts. We now understand the connection lifecycle much better."
-- "Explored options for caching but decided against Redis due to operational complexity. Will revisit if performance becomes critical."
+**Section-specific guidance:**
+- **Current Foci**: Update if focus shifted. Remove completed foci, add new ones.
+- **The Story So Far**: Only add if we completed a significant epoch. Don't add minor updates.
+- **Dragons & Gotchas**: Add new discoveries. Remove if we fixed a dragon.
+- **Open Questions**: Remove answered questions, add new ones.
+- **How It Works**: Update if architecture/structure changed significantly.
+- **Summary**: Rarely needs updating unless project's core purpose evolved.
 
-## Running the Update
-
-Once you have a session summary, run:
-
-```bash
-uv run ${CLAUDE_PLUGIN_ROOT}/scripts/refresh.py "YOUR SESSION SUMMARY HERE"
-```
-
-The script will:
-1. Read the current narrative from `.claude/narrative.md`
-2. Ask Claude to revise (not append to) the narrative based on your summary
-3. Save the updated narrative (backup at `.claude/narrative.md.bak`)
-
-## What Gets Updated
-
-The narrative has these sections that may change:
-
-- **Current Foci**: Updated if our focus shifted
-- **How It Works**: Updated if architecture/structure changed
-- **The Story So Far**: Extended if we completed a significant epoch
-- **Dragons & Gotchas**: New warnings added, fixed issues removed
-- **Open Questions**: Answered questions removed, new ones added
-- **Summary**: Rarely changes unless project purpose evolved
+If the session didn't change much about our understanding, the narrative can stay mostly the same.
+The goal is a **living document** that reflects current understanding, not a log of everything.
 
 ## When to Update
 
-Update the narrative when:
-- You completed a significant piece of work
-- You discovered something non-obvious about the codebase
-- Your understanding of the project shifted
-- You hit a "dragon" that future-you should know about
-- You answered a long-standing question
+**Update when:**
+- Completed significant work
+- Discovered something non-obvious
+- Understanding of the project shifted
+- Hit a "dragon" that future-us should know about
+- Answered a long-standing question
 
-Skip updating if:
-- The session was just exploration/reading
+**Skip if:**
+- Session was just exploration/reading
 - Changes were trivial (typos, minor tweaks)
-- Nothing changed about your understanding
+- Nothing changed about understanding
