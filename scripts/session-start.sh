@@ -87,6 +87,12 @@ except:
     fi
 fi
 
+# Add narrative prompt if exists
+NARRATIVE="${CLAUDE_DIR}/narrative.md"
+if [[ -f "${NARRATIVE}" ]]; then
+    CONTEXT="${CONTEXT}\n\n📖 **Project narrative exists** - Read .claude/narrative.md for project story, dragons, and tribal knowledge."
+fi
+
 # Add learnings count
 LEARNINGS="${CLAUDE_DIR}/learnings.md"
 if [[ -f "${LEARNINGS}" ]]; then
