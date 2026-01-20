@@ -3,6 +3,9 @@
 *Your codebase's context needs a responsible adult.*
 
 [![CI](https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml/badge.svg)](https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml)
+[![Docs](https://github.com/ChipFlow/context-daddy/actions/workflows/pages.yml/badge.svg)](https://chipflow.github.io/context-daddy/)
+
+**[Documentation](https://chipflow.github.io/context-daddy/)** · **[Changelog](CHANGELOG.md)**
 
 ## What
 
