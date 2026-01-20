@@ -1,5 +1,73 @@
 # Testing Documentation
 
+## Current Test Suite (v0.10.x)
+
+### Automated Test Files
+
+| File | Purpose | Tests |
+|------|---------|-------|
+| `tests/test_plugin_config.py` | Plugin configuration validation | 7 tests |
+| `tests/test_mcp_tools.py` | MCP tool functionality | Symbol search, file operations |
+| `tests/test_list_files.py` | File listing with patterns | Glob matching, path resolution |
+
+### CI Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | push, PR | Structure validation, linting |
+| `test-hooks.yml` | push to main | E2E hook execution (requires `ANTHROPIC_API_KEY`) |
+| `e2e-test.yml` | manual | Full E2E testing with Claude |
+
+### Running Tests
+
+```bash
+# Run all unit tests
+uv run pytest tests/
+
+# Run specific test file
+uv run pytest tests/test_plugin_config.py
+
+# Run plugin config validation (standalone)
+uv run tests/test_plugin_config.py
+```
+
+### Plugin Configuration Tests (v0.9.6+)
+
+`test_plugin_config.py` validates:
+
+1. **Required fields** - plugin.json has name, version, description, author, keywords, repository
+2. **Hooks discovery** - hooks/hooks.json exists (autodiscovered by Claude Code)
+3. **Hook types** - All hook types are valid (SessionStart, PreCompact, Stop, etc.)
+4. **Script existence** - All referenced scripts in hooks.json exist
+5. **Version format** - Version follows semver (X.Y.Z)
+6. **MCP servers** - Referenced server scripts exist
+7. **Version consistency** - plugin.json and marketplace.json versions match
+
+### E2E Hook Tests (v0.9.6+)
+
+`.github/workflows/test-hooks.yml` tests:
+
+- **SessionStart hook** - Creates .claude directory and manifest
+- **PreCompact + Stop hooks** - Verifies compaction flow via turn limits
+- **Artifact verification** - Checks repo-map.db creation and MCP logs
+
+---
+
+## Historical Testing
+
+### v0.8.0+ - Multiprocess Architecture
+
+The v0.8.0 release changed from thread-based to multiprocess indexing.
+
+**Key changes tested:**
+- Subprocess spawning for indexing
+- MCP server remains responsive during indexing
+- Watchdog can SIGKILL hung subprocess
+- SQLite WAL handles concurrent read/write
+- Resource limits (4GB memory, 20min CPU time)
+
+---
+
 ## v0.7.1 - Transaction Safety and Watchdog Testing
 
 ### Test Suite Summary
