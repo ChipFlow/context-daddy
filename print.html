@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe43041f.js";
+            window.path_to_searchindex_js = "searchindex-63165925.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-8e48f370.js"></script>
+        <script src="toc-d5909834.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -178,7 +178,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="documentation"><a class="header" href="#documentation">Documentation</a></h1>
+                        <h1 id="context-daddy-documentation"><a class="header" href="#context-daddy-documentation">context-daddy Documentation</a></h1>
 <p>Internal documentation for context-daddy development.</p>
 <h2 id="contents"><a class="header" href="#contents">Contents</a></h2>
 <div class="table-wrapper">
@@ -187,19 +187,17 @@
 <tr><th>Document</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><a href="#process-architecture">architecture.md</a></td><td>Process architecture - tree-sitter integration, multiprocess design, watchdog behavior</td></tr>
-<tr><td><a href="#testing-documentation">testing.md</a></td><td>Testing guide - unit tests, CI workflows, E2E tests</td></tr>
-<tr><td><a href="#todo-future-enhancements">roadmap.md</a></td><td>Future enhancements and completed features</td></tr>
-<tr><td><a href="#full-text-search-fts-design">FTS_DESIGN.md</a></td><td>Full-text search design decisions</td></tr>
+<tr><td><a href="#process-architecture">Architecture</a></td><td>Process architecture, multiprocess design, watchdog</td></tr>
+<tr><td><a href="#testing">Testing</a></td><td>Test suite, CI workflows, guarantees</td></tr>
+<tr><td><a href="#development">Development</a></td><td>Roadmap, design decisions, history</td></tr>
 </tbody>
 </table>
 </div>
 <h2 id="quick-links"><a class="header" href="#quick-links">Quick Links</a></h2>
 <ul>
-<li><strong>Main README</strong>: <a href="../README.html">../README.md</a></li>
-<li><strong>Changelog</strong>: <a href="../CHANGELOG.html">../CHANGELOG.md</a></li>
-<li><strong>Development Guide</strong>: <a href="../CLAUDE.html">../CLAUDE.md</a></li>
-<li><strong>Plugin Skills</strong>: <a href="../SKILL.html">../SKILL.md</a></li>
+<li><a href="https://github.com/ChipFlow/context-daddy">Main README</a></li>
+<li><a href="https://github.com/ChipFlow/context-daddy/blob/main/CHANGELOG.md">Changelog</a></li>
+<li><a href="https://github.com/ChipFlow/context-daddy/blob/main/SKILL.md">Plugin Skills</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="process-architecture"><a class="header" href="#process-architecture">Process Architecture</a></h1>
@@ -545,35 +543,8 @@ if current_version != DB_VERSION:
 
 <p>It’s a <strong>flat single-process architecture</strong>, not a process tree.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="testing-documentation"><a class="header" href="#testing-documentation">Testing Documentation</a></h1>
-<h2 id="current-test-suite-v010x"><a class="header" href="#current-test-suite-v010x">Current Test Suite (v0.10.x)</a></h2>
-<h3 id="automated-test-files"><a class="header" href="#automated-test-files">Automated Test Files</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>File</th><th>Purpose</th><th>Tests</th></tr>
-</thead>
-<tbody>
-<tr><td><code>tests/test_plugin_config.py</code></td><td>Plugin configuration validation</td><td>7 tests</td></tr>
-<tr><td><code>tests/test_mcp_tools.py</code></td><td>MCP tool functionality</td><td>Symbol search, file operations</td></tr>
-<tr><td><code>tests/test_list_files.py</code></td><td>File listing with patterns</td><td>Glob matching, path resolution</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="ci-workflows"><a class="header" href="#ci-workflows">CI Workflows</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Workflow</th><th>Trigger</th><th>Purpose</th></tr>
-</thead>
-<tbody>
-<tr><td><code>ci.yml</code></td><td>push, PR</td><td>Structure validation, linting</td></tr>
-<tr><td><code>test-hooks.yml</code></td><td>push to main</td><td>E2E hook execution (requires <code>ANTHROPIC_API_KEY</code>)</td></tr>
-<tr><td><code>e2e-test.yml</code></td><td>manual</td><td>Full E2E testing with Claude</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="running-tests"><a class="header" href="#running-tests">Running Tests</a></h3>
+<h1 id="testing"><a class="header" href="#testing">Testing</a></h1>
+<h2 id="running-tests"><a class="header" href="#running-tests">Running Tests</a></h2>
 <pre><code class="language-bash"># Run all unit tests
 uv run pytest tests/
 
@@ -583,7 +554,36 @@ uv run pytest tests/test_plugin_config.py
 # Run plugin config validation (standalone)
 uv run tests/test_plugin_config.py
 </code></pre>
-<h3 id="plugin-configuration-tests-v096"><a class="header" href="#plugin-configuration-tests-v096">Plugin Configuration Tests (v0.9.6+)</a></h3>
+<h2 id="test-files"><a class="header" href="#test-files">Test Files</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>tests/test_plugin_config.py</code></td><td>Plugin configuration validation (7 tests)</td></tr>
+<tr><td><code>tests/test_mcp_tools.py</code></td><td>MCP tool functionality</td></tr>
+<tr><td><code>tests/test_list_files.py</code></td><td>File listing with glob patterns</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="ci-workflows"><a class="header" href="#ci-workflows">CI Workflows</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Workflow</th><th>Trigger</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ci.yml</code></td><td>push, PR</td><td>Structure validation, script tests</td></tr>
+<tr><td><code>test-hooks.yml</code></td><td>push to main</td><td>E2E hook execution</td></tr>
+<tr><td><code>e2e-test.yml</code></td><td>manual</td><td>Full E2E testing with Claude</td></tr>
+<tr><td><code>pages.yml</code></td><td>push to main</td><td>Deploy documentation</td></tr>
+<tr><td><code>preview-docs.yml</code></td><td>PR</td><td>Documentation preview</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Note</strong>: E2E tests require <code>ANTHROPIC_API_KEY</code> secret.</p>
+<h2 id="plugin-configuration-tests"><a class="header" href="#plugin-configuration-tests">Plugin Configuration Tests</a></h2>
 <p><code>test_plugin_config.py</code> validates:</p>
 <ol>
 <li><strong>Required fields</strong> - plugin.json has name, version, description, author, keywords, repository</li>
@@ -594,706 +594,137 @@ uv run tests/test_plugin_config.py
 <li><strong>MCP servers</strong> - Referenced server scripts exist</li>
 <li><strong>Version consistency</strong> - plugin.json and marketplace.json versions match</li>
 </ol>
-<h3 id="e2e-hook-tests-v096"><a class="header" href="#e2e-hook-tests-v096">E2E Hook Tests (v0.9.6+)</a></h3>
+<h2 id="e2e-hook-tests"><a class="header" href="#e2e-hook-tests">E2E Hook Tests</a></h2>
 <p><code>.github/workflows/test-hooks.yml</code> tests:</p>
 <ul>
 <li><strong>SessionStart hook</strong> - Creates .claude directory and manifest</li>
 <li><strong>PreCompact + Stop hooks</strong> - Verifies compaction flow via turn limits</li>
 <li><strong>Artifact verification</strong> - Checks repo-map.db creation and MCP logs</li>
 </ul>
-<hr>
-<h2 id="historical-testing"><a class="header" href="#historical-testing">Historical Testing</a></h2>
-<h3 id="v080---multiprocess-architecture"><a class="header" href="#v080---multiprocess-architecture">v0.8.0+ - Multiprocess Architecture</a></h3>
-<p>The v0.8.0 release changed from thread-based to multiprocess indexing.</p>
-<p><strong>Key changes tested:</strong></p>
+<h2 id="test-guarantees"><a class="header" href="#test-guarantees">Test Guarantees</a></h2>
+<h3 id="transaction-safety"><a class="header" href="#transaction-safety">Transaction Safety</a></h3>
 <ul>
-<li>Subprocess spawning for indexing</li>
-<li>MCP server remains responsive during indexing</li>
-<li>Watchdog can SIGKILL hung subprocess</li>
-<li>SQLite WAL handles concurrent read/write</li>
-<li>Resource limits (4GB memory, 20min CPU time)</li>
+<li>All database writes in single BEGIN IMMEDIATE / COMMIT block</li>
+<li>WAL mode enabled for crash safety</li>
+<li>Atomic rename only after successful commit</li>
+<li>Rollback on exception (no partial state)</li>
 </ul>
-<hr>
-<h2 id="v071---transaction-safety-and-watchdog-testing"><a class="header" href="#v071---transaction-safety-and-watchdog-testing">v0.7.1 - Transaction Safety and Watchdog Testing</a></h2>
-<h3 id="test-suite-summary"><a class="header" href="#test-suite-summary">Test Suite Summary</a></h3>
-<p>All tests passed ✓</p>
-<h3 id="1-transaction-safety-tests"><a class="header" href="#1-transaction-safety-tests">1. Transaction Safety Tests</a></h3>
-<p><strong>Test: Single-transaction commit</strong></p>
+<h3 id="watchdog"><a class="header" href="#watchdog">Watchdog</a></h3>
 <ul>
-<li>Verified status persisted correctly after commit</li>
-<li>Confirmed all-or-nothing semantics</li>
-<li>Result: ✓ PASS</li>
+<li>Detects indexing hung &gt;10 minutes</li>
+<li>Sets status=‘failed’ with error message</li>
+<li>Prevents hung process from overwriting after intervention</li>
+<li>Runs on server startup and every 60 seconds</li>
 </ul>
-<p><strong>Test: WAL mode enabled</strong></p>
+<h3 id="data-integrity"><a class="header" href="#data-integrity">Data Integrity</a></h3>
 <ul>
-<li>Verified <code>PRAGMA journal_mode</code> returns ‘WAL’</li>
-<li>Ensures crash-safety for interrupted writes</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Watchdog overwrite protection</strong></p>
-<ul>
-<li>Simulated watchdog marking database as ‘failed’</li>
-<li>Created temp database with ‘completed’ status</li>
-<li>Verified safety check prevents rename if status=‘failed’</li>
-<li>Verified temp file cleaned up properly</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Metadata persistence</strong></p>
-<ul>
-<li>Verified metadata table structure (key TEXT PRIMARY KEY, value TEXT)</li>
-<li>Confirmed required keys present: status, symbol_count, last_indexed</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="2-watchdog-detection-tests"><a class="header" href="#2-watchdog-detection-tests">2. Watchdog Detection Tests</a></h3>
-<p><strong>Test: Detects hung indexing (&gt;10 minutes)</strong></p>
-<ul>
-<li>Set index_start_time to 15 minutes ago</li>
-<li>Verified watchdog detects elapsed &gt; 600 seconds</li>
-<li>Confirmed status changed to ‘failed’</li>
-<li>Confirmed error_message set correctly</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Allows recent indexing (&lt;10 minutes)</strong></p>
-<ul>
-<li>Set index_start_time to current time</li>
-<li>Verified watchdog does NOT trigger</li>
-<li>Confirmed status remains ‘indexing’</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Real process detection</strong></p>
-<ul>
-<li>Started actual Python process with indexing status</li>
-<li>Backdated timestamp to 15 minutes ago</li>
-<li>Froze process with SIGSTOP</li>
-<li>Ran watchdog check</li>
-<li>Verified status changed to ‘failed’</li>
-<li>Resumed process with SIGCONT</li>
-<li>Verified process couldn’t change status back</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="3-race-condition-tests"><a class="header" href="#3-race-condition-tests">3. Race Condition Tests</a></h3>
-<p><strong>Test: Hung process completing after watchdog</strong></p>
-<ul>
-<li>Started slow indexer process (20 second delay)</li>
-<li>Backdated timestamp to trigger watchdog</li>
-<li>Ran watchdog → status=‘failed’</li>
-<li>Let process complete and try to write</li>
-<li>Verified safety check prevented database overwrite</li>
-<li>Confirmed original symbols intact (79 symbols)</li>
-<li>Confirmed status remained ‘failed’</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Concurrent status checks</strong></p>
-<ul>
-<li>Performed 10 concurrent reads of metadata</li>
-<li>Verified no data corruption</li>
-<li>Verified metadata count &gt;= 3 (status, symbol_count, last_indexed)</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="4-error-handling-tests"><a class="header" href="#4-error-handling-tests">4. Error Handling Tests</a></h3>
-<p><strong>Test: Recovery from failed state</strong></p>
-<ul>
-<li>Set status to ‘failed’ with error message</li>
-<li>Started new indexing (status=‘indexing’)</li>
-<li>Cleared error_message</li>
-<li>Completed successfully (status=‘completed’)</li>
-<li>Verified error message deleted</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Explicit indexing error</strong></p>
-<ul>
-<li>Set status=‘failed’ with error message</li>
-<li>Verified error persisted in metadata table</li>
-<li>Verified status can be read correctly</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="5-auto-wait-behavior-tests"><a class="header" href="#5-auto-wait-behavior-tests">5. Auto-Wait Behavior Tests</a></h3>
-<p><strong>Test: Auto-wait detects indexing in progress</strong></p>
-<ul>
-<li>Set status=‘indexing’</li>
-<li>Verified polling detects status correctly</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Auto-wait completes on success</strong></p>
-<ul>
-<li>Set status=‘indexing’</li>
-<li>Simulated background completion after 3 seconds</li>
-<li>Verified wait_for_indexing() polls every second</li>
-<li>Confirmed returns success=True when completed</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Auto-wait times out</strong></p>
-<ul>
-<li>Tested with 10-second timeout</li>
-<li>Verified timeout behavior (returns success=False)</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="6-end-to-end-integration-tests"><a class="header" href="#6-end-to-end-integration-tests">6. End-to-End Integration Tests</a></h3>
-<p><strong>Test: Full indexing workflow</strong></p>
-<ul>
-<li>Ran <code>uv run scripts/generate-repo-map.py .</code></li>
-<li>Verified 79 symbols indexed</li>
-<li>Confirmed metadata: status=‘completed’, symbol_count=‘79’</li>
-<li>Verified no temp files left behind</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h2 id="test-coverage"><a class="header" href="#test-coverage">Test Coverage</a></h2>
-<h3 id="data-corruption-scenarios-tested"><a class="header" href="#data-corruption-scenarios-tested">Data Corruption Scenarios Tested</a></h3>
-<ol>
-<li>✓ Process killed after DELETE but before INSERT</li>
-<li>✓ Multiple premature commits creating partial state</li>
-<li>✓ Hung process completing after watchdog intervention</li>
-<li>✓ Concurrent reads during indexing</li>
-<li>✓ Recovery from failed/crashed indexing</li>
-<li>✓ Watchdog detecting and resetting hung processes</li>
-<li>✓ Safety check preventing overwrite after watchdog</li>
-</ol>
-<h3 id="transaction-safety-guarantees"><a class="header" href="#transaction-safety-guarantees">Transaction Safety Guarantees</a></h3>
-<ol>
-<li>✓ All writes in single BEGIN IMMEDIATE / COMMIT block</li>
-<li>✓ Rollback on exception (no partial state)</li>
-<li>✓ WAL mode enabled (crash-safe)</li>
-<li>✓ Atomic rename only after successful commit</li>
-<li>✓ Safety check before rename prevents watchdog race</li>
-<li>✓ set_metadata() no longer commits internally</li>
-</ol>
-<h3 id="watchdog-guarantees"><a class="header" href="#watchdog-guarantees">Watchdog Guarantees</a></h3>
-<ol>
-<li>✓ Detects indexing hung &gt;10 minutes (600 seconds)</li>
-<li>✓ Sets status=‘failed’ with descriptive error message</li>
-<li>✓ Prevents hung process from overwriting after intervention</li>
-<li>✓ Runs on server startup and every 60 seconds</li>
-<li>✓ Handles edge cases (missing timestamp, invalid format)</li>
-</ol>
-<h2 id="critical-bug-fixes-verified"><a class="header" href="#critical-bug-fixes-verified">Critical Bug Fixes Verified</a></h2>
-<h3 id="before-v071-vulnerable"><a class="header" href="#before-v071-vulnerable">Before v0.7.1 (Vulnerable)</a></h3>
-<ul>
-<li>❌ set_metadata() committed 3 times during one write</li>
-<li>❌ No transaction wrapper (DELETE/INSERT separate)</li>
-<li>❌ Hung process could overwrite after watchdog</li>
-<li>❌ No rollback on error</li>
-<li>❌ Process kill after DELETE = empty table</li>
-</ul>
-<h3 id="after-v071-fixed"><a class="header" href="#after-v071-fixed">After v0.7.1 (Fixed)</a></h3>
-<ul>
-<li>✓ Single commit for entire write operation</li>
-<li>✓ Explicit transaction with BEGIN IMMEDIATE</li>
-<li>✓ Safety check prevents watchdog race condition</li>
-<li>✓ Rollback on exception</li>
-<li>✓ WAL + transaction = crash-safe even during kill</li>
-</ul>
-<h2 id="test-execution"><a class="header" href="#test-execution">Test Execution</a></h2>
-<p>All tests can be re-run with:</p>
-<pre><code class="language-bash"># Unit tests (in Python REPL)
-python3 /tmp/test_watchdog_real_process.py
-python3 /tmp/test_hung_process_completes.py
-
-# Integration test
-uv run scripts/generate-repo-map.py .
-sqlite3 .claude/repo-map.db "SELECT key, value FROM metadata ORDER BY key"
-</code></pre>
-<h2 id="test-metrics"><a class="header" href="#test-metrics">Test Metrics</a></h2>
-<ul>
-<li><strong>Total test cases</strong>: 18</li>
-<li><strong>Passed</strong>: 18</li>
-<li><strong>Failed</strong>: 0</li>
-<li><strong>Test coverage</strong>: Transaction safety, watchdog, race conditions, error handling, auto-wait</li>
-<li><strong>Critical scenarios tested</strong>: 7</li>
-<li><strong>Edge cases tested</strong>: 11</li>
+<li>Safety check before rename prevents watchdog race condition</li>
+<li>Concurrent reads during indexing handled by SQLite WAL</li>
+<li>Recovery from failed/crashed indexing supported</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="todo-future-enhancements"><a class="header" href="#todo-future-enhancements">TODO: Future Enhancements</a></h1>
-<h2 id="-completed-multiprocess-architecture-v080"><a class="header" href="#-completed-multiprocess-architecture-v080">✅ COMPLETED: Multiprocess Architecture (v0.8.0)</a></h2>
-<p><strong>Status</strong>: ✅ COMPLETED in v0.8.0</p>
-<p><strong>Motivation</strong>: The v0.7.x thread-based architecture had a critical limitation - hung tree-sitter parsing would freeze the entire MCP server process. Multiprocess architecture solves this by spawning a separate subprocess for indexing.</p>
-<p><strong>Benefits</strong>:</p>
-<ul>
-<li><strong>MCP server always responsive</strong>: Even if indexing hangs, the MCP server remains operational</li>
-<li><strong>Watchdog can kill hung processes</strong>: Using SIGKILL on the subprocess doesn’t affect MCP server</li>
-<li><strong>Clean process isolation</strong>: Each indexing run is independent</li>
-<li><strong>SQLite WAL handles concurrent access</strong>: Database can be read while indexing subprocess writes</li>
-</ul>
-<p><strong>Implementation</strong>:</p>
-<ul>
-<li>Changed <code>_is_indexing</code> boolean to <code>_indexing_process: subprocess.Popen | None</code></li>
-<li>Modified <code>do_index()</code> to spawn subprocess: <code>uv run scripts/generate-repo-map.py</code></li>
-<li>Updated <code>check_indexing_watchdog()</code> to kill hung subprocess with SIGKILL</li>
-<li>All status checks now use <code>_indexing_process.poll()</code> to detect running process</li>
-</ul>
-<p><strong>Testing</strong>:</p>
-<ul>
-<li>Verified subprocess spawning works correctly</li>
-<li>Database metadata correctly tracks status</li>
-<li>Watchdog can kill hung subprocess without affecting MCP server</li>
-</ul>
-<p><strong>Resource Limits</strong> (v0.8.0):</p>
-<ul>
-<li>Added <code>setrlimit</code> on Unix/macOS to catch runaway resource usage</li>
-<li>Memory limit: 4GB virtual address space (catches pathological allocation issues)</li>
-<li>CPU time limit: 20 minutes (catches infinite loops in parsing)</li>
-<li>Automatic detection and logging:
-<ul>
-<li>SIGXCPU: CPU time limit exceeded</li>
-<li>SIGSEGV: Possible memory limit exceeded</li>
-<li>SIGKILL: Process was killed by watchdog</li>
-</ul>
-</li>
-<li>Checked on startup and every 60 seconds</li>
-<li>Normal indexing unaffected by generous limits</li>
-</ul>
-<hr>
-<h2 id="-completed-indexing-status-and-wait-support-v070---v071"><a class="header" href="#-completed-indexing-status-and-wait-support-v070---v071">✅ COMPLETED: Indexing Status and Wait Support (v0.7.0 - v0.7.1)</a></h2>
-<p><strong>Status</strong>: ✅ COMPLETED in v0.7.0 and v0.7.1</p>
-<p><strong>Problem</strong>: (SOLVED)</p>
-<ul>
-<li><del>MCP tools may be called before indexing completes</del></li>
-<li><del>Returns incomplete/empty results on first use</del></li>
-<li><del>No way to check if indexing is done or wait for completion</del></li>
-</ul>
-<p><strong>Solution</strong>: ✅ Implemented metadata table to track indexing status</p>
-<h3 id="schema-addition"><a class="header" href="#schema-addition">Schema Addition</a></h3>
-<pre><code class="language-sql">CREATE TABLE metadata (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-
--- Status values: 'idle' | 'indexing' | 'completed' | 'failed'
--- Other keys: last_indexed, symbol_count, file_count, index_start_time, error_message
-</code></pre>
-<h3 id="implementation-tasks--all-completed"><a class="header" href="#implementation-tasks--all-completed">Implementation Tasks ✅ ALL COMPLETED</a></h3>
-<ol>
-<li>
-<p>✅ <strong>generate-repo-map.py</strong>: Updated status in metadata table (v0.7.0)</p>
-<ul>
-<li>✅ Set <code>status='indexing'</code> at start</li>
-<li>✅ Set <code>status='completed'</code> on success</li>
-<li>✅ Set <code>status='failed'</code> on error with error_message</li>
-<li>✅ Single transaction for all writes (v0.7.1 - prevents data corruption)</li>
-</ul>
-</li>
-<li>
-<p>✅ <strong>MCP Server - Enhanced status tool</strong> (v0.7.0):</p>
-<ul>
-<li>✅ Return metadata from database</li>
-<li>✅ Show indexing progress</li>
-<li>✅ Calculate indexing duration</li>
-<li>✅ Detect stale/hung indexing</li>
-</ul>
-</li>
-<li>
-<p>✅ <strong>MCP Server - Auto-wait behavior</strong> (v0.7.0):</p>
-<ul>
-<li>✅ Check status before processing tool calls</li>
-<li>✅ If <code>status='indexing'</code>, poll until complete (60s timeout)</li>
-<li>✅ Return helpful error if timeout</li>
-<li>✅ Trigger indexing if DB doesn’t exist</li>
-</ul>
-</li>
-<li>
-<p>✅ <strong>New MCP tool</strong>: <code>wait_for_index(timeout_seconds=60)</code> (v0.7.0)</p>
-<ul>
-<li>✅ Explicitly wait for indexing to complete</li>
-<li>✅ Return progress updates</li>
-<li>✅ Configurable timeout</li>
-</ul>
-</li>
-</ol>
-<h3 id="benefits-achieved-"><a class="header" href="#benefits-achieved-">Benefits Achieved ✅</a></h3>
-<ul>
-<li>✅ Tools “just work” even on first use</li>
-<li>✅ Users don’t get confusing empty results</li>
-<li>✅ Can show progress during long indexing</li>
-<li>✅ Can detect and recover from hung indexing</li>
-<li>✅ Database protected from corruption (v0.7.1)</li>
-</ul>
-<h3 id="watchdog-for-recovery--implemented-v070"><a class="header" href="#watchdog-for-recovery--implemented-v070">Watchdog for Recovery ✅ IMPLEMENTED (v0.7.0)</a></h3>
-<p><strong>Problem</strong>: (SOLVED) <del>Indexing can crash/hang leaving status stuck at ‘indexing’</del></p>
-<p><strong>Solution</strong>: Add watchdog logic in MCP server</p>
-<pre><code class="language-python">def check_indexing_watchdog():
-    """Check if indexing is stuck and reset if needed."""
-    if not DB_PATH.exists():
-        return
-
-    try:
-        conn = get_db()
-        cursor = conn.execute("SELECT value FROM metadata WHERE key = ?", ["status"])
-        row = cursor.fetchone()
-
-        if row and row[0] == "indexing":
-            # Check how long it's been indexing
-            cursor = conn.execute("SELECT value FROM metadata WHERE key = ?", ["index_start_time"])
-            start_row = cursor.fetchone()
-
-            if start_row:
-                start_time = datetime.fromisoformat(start_row[0])
-                elapsed = (datetime.now() - start_time).total_seconds()
-
-                # If indexing for &gt; 10 minutes, assume it crashed
-                if elapsed &gt; 600:
-                    logger.warning(f"Indexing stuck for {elapsed}s, resetting status")
-                    conn.execute("UPDATE metadata SET value = ? WHERE key = ?", ["failed", "status"])
-                    conn.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-                                ["error_message", f"Indexing hung/crashed after {elapsed}s"])
-                    conn.commit()
-
-        conn.close()
-    except Exception as e:
-        logger.error(f"Watchdog check failed: {e}")
-
-# Run watchdog on server startup
-async def main():
-    check_indexing_watchdog()  # Check for stuck indexing
-
-    # Start periodic staleness checker
-    asyncio.create_task(periodic_staleness_check())
-    asyncio.create_task(periodic_watchdog_check())  # New: periodic watchdog
-
-    async with stdio_server() as (read_stream, write_stream):
-        await app.run(read_stream, write_stream, app.create_initialization_options())
-
-async def periodic_watchdog_check():
-    """Run watchdog every 60 seconds to detect hung indexing."""
-    while True:
-        await asyncio.sleep(60)
-        try:
-            check_indexing_watchdog()
-        except Exception as e:
-            logger.warning(f"Watchdog check failed: {e}")
-</code></pre>
-<p><strong>Watchdog Features:</strong></p>
-<ul>
-<li>Runs on MCP server startup</li>
-<li>Runs periodically (every 60 seconds)</li>
-<li>Detects indexing stuck &gt; 10 minutes</li>
-<li>Resets status to ‘failed’ with error message</li>
-<li>Allows recovery by triggering new index</li>
-</ul>
-<p><strong>Edge Cases Handled:</strong></p>
-<ol>
-<li><strong>Crash during indexing</strong>: Watchdog detects and resets</li>
-<li><strong>Multiple concurrent indexing</strong>: Lock in do_index() prevents this</li>
-<li><strong>Partial index left behind</strong>: Status=‘failed’ triggers fresh reindex</li>
-<li><strong>Zombie processes</strong>: Session start hook already kills them</li>
-</ol>
-<h3 id="migration"><a class="header" href="#migration">Migration</a></h3>
-<ul>
-<li>Bump CACHE_VERSION to 4</li>
-<li>Create metadata table if not exists</li>
-<li>Set initial status based on symbol count</li>
-<li>Run watchdog on first load to detect any stuck state</li>
-</ul>
-<hr>
-<h2 id="string-literals-and-comments-indexing"><a class="header" href="#string-literals-and-comments-indexing">String Literals and Comments Indexing</a></h2>
-<p><strong>Status</strong>: Planned for future release</p>
-<p><strong>Goal</strong>: Extend repo-map indexing to capture string literals and comments, making it a comprehensive search tool that eliminates most Grep usage.</p>
-<h3 id="use-cases"><a class="header" href="#use-cases">Use Cases</a></h3>
-<p><strong>String Literals:</strong></p>
+<h1 id="development"><a class="header" href="#development">Development</a></h1>
+<p>Future plans, design decisions, and development history.</p>
+<h2 id="planned-features"><a class="header" href="#planned-features">Planned Features</a></h2>
+<h3 id="string-literals-and-comments-indexing"><a class="header" href="#string-literals-and-comments-indexing">String Literals and Comments Indexing</a></h3>
+<p><strong>Status</strong>: Planned</p>
+<p>Extend repo-map indexing to capture string literals and comments, enabling concept searches without grep.</p>
+<p><strong>Use Cases:</strong></p>
 <ul>
 <li>Find error messages: <code>search_strings("connection failed")</code></li>
-<li>Find API endpoints: <code>search_strings("/api/users")</code></li>
-<li>Find log messages: <code>search_strings("Starting server")</code></li>
-<li>Find config keys: <code>search_strings("DATABASE_URL")</code></li>
-</ul>
-<p><strong>Comments:</strong></p>
-<ul>
 <li>Find TODOs: <code>search_comments(tags="TODO")</code></li>
-<li>Find FIXMEs: <code>search_comments(tags="FIXME")</code></li>
-<li>Find architecture notes: <code>search_comments("design pattern")</code></li>
-<li>Find explanatory comments: <code>search_comments("this function")</code></li>
+<li>Find API endpoints: <code>search_strings("/api/users")</code></li>
 </ul>
-<h3 id="schema-extensions"><a class="header" href="#schema-extensions">Schema Extensions</a></h3>
-<pre><code class="language-sql">-- New: String literals table
-CREATE TABLE string_literals (
+<p><strong>Schema Extensions:</strong></p>
+<pre><code class="language-sql">CREATE TABLE string_literals (
     id INTEGER PRIMARY KEY,
-    content TEXT NOT NULL,      -- The literal value
+    content TEXT NOT NULL,
     file_path TEXT NOT NULL,
     line_number INTEGER NOT NULL,
-    context TEXT,               -- Function/class containing this literal
-    kind TEXT                   -- single, double, triple, f-string, raw, etc.
+    context TEXT,
+    kind TEXT  -- single, double, triple, f-string, raw
 );
 
--- New: Comments table
 CREATE TABLE comments (
     id INTEGER PRIMARY KEY,
-    content TEXT NOT NULL,      -- Comment text (without # or // or /* */)
+    content TEXT NOT NULL,
     file_path TEXT NOT NULL,
     line_number INTEGER NOT NULL,
-    kind TEXT,                  -- line, block, docstring
-    tags TEXT                   -- TODO, FIXME, NOTE, BUG, HACK, XXX, etc.
+    kind TEXT,  -- line, block, docstring
+    tags TEXT   -- TODO, FIXME, NOTE, etc.
 );
-
--- Indexes for fast searching
-CREATE INDEX idx_string_content ON string_literals(content);
-CREATE INDEX idx_string_file ON string_literals(file_path);
-CREATE INDEX idx_comment_content ON comments(content);
-CREATE INDEX idx_comment_file ON comments(file_path);
-CREATE INDEX idx_comment_tags ON comments(tags);
 </code></pre>
-<h3 id="new-mcp-tools"><a class="header" href="#new-mcp-tools">New MCP Tools</a></h3>
+<p><strong>New MCP Tools:</strong></p>
 <ul>
-<li><code>search_strings(pattern, file?)</code> - Find string literals matching pattern</li>
-<li><code>search_comments(pattern?, tags?, file?)</code> - Find comments, optionally filtered by tags</li>
-<li><code>get_todos()</code> - Shorthand for <code>search_comments(tags="TODO")</code></li>
-<li><code>get_fixmes()</code> - Shorthand for <code>search_comments(tags="FIXME")</code></li>
+<li><code>search_strings(pattern, file?)</code> - Find string literals</li>
+<li><code>search_comments(pattern?, tags?, file?)</code> - Find comments</li>
+<li><code>get_todos()</code> / <code>get_fixmes()</code> - Convenience tools</li>
 </ul>
-<h3 id="implementation-tasks"><a class="header" href="#implementation-tasks">Implementation Tasks</a></h3>
-<ol>
-<li>
-<p><strong>Python Support</strong> (Easiest - use AST):</p>
-<ul>
-<li>Extract <code>ast.Constant</code> nodes with string values</li>
-<li>Extract comment nodes (use <code>tokenize</code> module)</li>
-<li>Detect comment tags (TODO, FIXME, etc.) with regex</li>
-</ul>
-</li>
-<li>
-<p><strong>C++ Support</strong> (tree-sitter):</p>
-<ul>
-<li>Extend tree-sitter query for <code>string_literal</code> nodes</li>
-<li>Extract <code>comment</code> nodes from parse tree</li>
-<li>Handle different comment styles: <code>//</code>, <code>/**/</code>, docstrings</li>
-</ul>
-</li>
-<li>
-<p><strong>Rust Support</strong> (tree-sitter):</p>
-<ul>
-<li>Extract <code>string_literal</code> and <code>raw_string_literal</code> nodes</li>
-<li>Extract <code>line_comment</code> and <code>block_comment</code> nodes</li>
-<li>Handle doc comments <code>///</code> and <code>//!</code></li>
-</ul>
-</li>
-<li>
-<p><strong>MCP Server Updates</strong>:</p>
-<ul>
-<li>Add <code>search_strings</code> tool</li>
-<li>Add <code>search_comments</code> tool</li>
-<li>Add convenience tools (<code>get_todos</code>, <code>get_fixmes</code>)</li>
-</ul>
-</li>
-<li>
-<p><strong>Database Migration</strong>:</p>
-<ul>
-<li>Bump <code>CACHE_VERSION</code> to trigger reindex</li>
-<li>Create new tables with proper indexes</li>
-<li>Update <code>write_symbols_to_sqlite</code> to handle new tables</li>
-</ul>
-</li>
-</ol>
-<h3 id="considerations"><a class="header" href="#considerations">Considerations</a></h3>
-<p><strong>Performance:</strong></p>
-<ul>
-<li>Database size will increase (many more entries)</li>
-<li>Consider limiting string literal length (exclude very long strings)</li>
-<li>Consider excluding common/boring strings (“”, “ “, etc.)</li>
-</ul>
-<p><strong>Memory:</strong></p>
-<ul>
-<li>Current single-threaded indexing should handle this fine</li>
-<li>Might need to batch writes to SQLite for large projects</li>
-</ul>
-<p><strong>Configuration:</strong></p>
-<ul>
-<li>Add option to disable string/comment indexing (for very large repos)</li>
-<li>Add option to configure which comment tags to index</li>
-</ul>
-<h3 id="breaking-changes"><a class="header" href="#breaking-changes">Breaking Changes</a></h3>
-<ul>
-<li>Requires database schema change (CACHE_VERSION bump)</li>
-<li>Users will need to wait for full reindex on first use</li>
-<li>Old repo-map.db files won’t be compatible</li>
-</ul>
-<h3 id="benefits"><a class="header" href="#benefits">Benefits</a></h3>
-<ul>
-<li><strong>Eliminates ~80% of Grep usage</strong> for code searches</li>
-<li>Find error messages without reading whole codebase</li>
-<li>Track TODOs/FIXMEs systematically</li>
-<li>Fast API endpoint discovery</li>
-<li>Understand logging patterns across project</li>
-</ul>
-<h3 id="estimated-effort"><a class="header" href="#estimated-effort">Estimated Effort</a></h3>
-<ul>
-<li>Python implementation: 4-6 hours</li>
-<li>C++/Rust implementation: 6-8 hours</li>
-<li>MCP tools: 2-3 hours</li>
-<li>Testing: 3-4 hours</li>
-<li><strong>Total: ~20 hours</strong></li>
-</ul>
-<hr>
-<h2 id="other-future-ideas"><a class="header" href="#other-future-ideas">Other Future Ideas</a></h2>
-<h3 id="multi-repository-support"><a class="header" href="#multi-repository-support">Multi-Repository Support</a></h3>
-<p>Track symbols across multiple related repositories (monorepo support).</p>
-<h3 id="symbol-references"><a class="header" href="#symbol-references">Symbol References</a></h3>
-<p>Track where symbols are used, not just where they’re defined (call graph).</p>
-<h3 id="importinclude-tracking"><a class="header" href="#importinclude-tracking">Import/Include Tracking</a></h3>
-<p>Index all imports/includes to understand dependencies.</p>
-<h3 id="type-information"><a class="header" href="#type-information">Type Information</a></h3>
-<p>Enhanced type tracking beyond just signatures (full type hierarchies).</p>
-<h3 id="ai-powered-similar-code-detection"><a class="header" href="#ai-powered-similar-code-detection">AI-Powered Similar Code Detection</a></h3>
-<p>Use embeddings to find semantically similar code beyond just name matching.</p>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="full-text-search-fts-design"><a class="header" href="#full-text-search-fts-design">Full-Text Search (FTS) Design</a></h1>
-<h2 id="goal"><a class="header" href="#goal">Goal</a></h2>
-<p>Enable fast, relevance-ranked searches across comments, docstrings, and string literals in the codebase.</p>
-<h2 id="use-cases-1"><a class="header" href="#use-cases-1">Use Cases</a></h2>
-<ol>
-<li><strong>Finding concepts in documentation</strong>: Search “connection pooling” finds all related docstrings</li>
-<li><strong>Finding error messages</strong>: Search for specific error text across the codebase</li>
-<li><strong>Finding TODOs/FIXMEs</strong>: Aggregate all technical debt markers</li>
-<li><strong>Documentation exploration</strong>: Discover what functionality exists by reading comments</li>
-</ol>
-<h2 id="database-schema-extension"><a class="header" href="#database-schema-extension">Database Schema Extension</a></h2>
-<h3 id="new-fts5-virtual-table"><a class="header" href="#new-fts5-virtual-table">New FTS5 Virtual Table</a></h3>
-<pre><code class="language-sql">CREATE VIRTUAL TABLE IF NOT EXISTS code_text_fts USING fts5(
-    file_path UNINDEXED,     -- File location (not searchable, for display)
-    line_number UNINDEXED,   -- Line number (not searchable, for display)
+<h3 id="full-text-search-fts"><a class="header" href="#full-text-search-fts">Full-Text Search (FTS)</a></h3>
+<p><strong>Status</strong>: Planned</p>
+<p>Enable fast, relevance-ranked searches across comments, docstrings, and string literals.</p>
+<pre><code class="language-sql">CREATE VIRTUAL TABLE code_text_fts USING fts5(
+    file_path UNINDEXED,
+    line_number UNINDEXED,
     element_type UNINDEXED,  -- 'comment', 'docstring', 'string_literal'
-    symbol_name UNINDEXED,   -- Symbol name if docstring, NULL otherwise
-    content,                 -- The searchable text content
+    symbol_name UNINDEXED,
+    content,
     tokenize='unicode61 remove_diacritics 2'
 );
 </code></pre>
-<p><strong>Why this schema:</strong></p>
-<ul>
-<li><code>UNINDEXED</code> columns are stored but not searchable (metadata only)</li>
-<li>Only <code>content</code> is full-text searchable</li>
-<li><code>tokenize='unicode61 remove_diacritics 2'</code> handles Unicode, removes accents, splits on punctuation</li>
-</ul>
-<h3 id="size-estimate"><a class="header" href="#size-estimate">Size Estimate</a></h3>
-<p>For a medium codebase (10K LOC):</p>
-<ul>
-<li>Symbols only: ~1-2MB</li>
-<li>Comments/docstrings: ~500KB-1MB (compressed in FTS5)</li>
-<li>String literals: ~200-500KB</li>
-<li><strong>Total with FTS: ~2-4MB</strong> (2-3x increase)</li>
-</ul>
-<h2 id="what-gets-indexed"><a class="header" href="#what-gets-indexed">What Gets Indexed</a></h2>
-<h3 id="python"><a class="header" href="#python">Python</a></h3>
-<ul>
-<li><strong>Docstrings</strong>: Triple-quoted strings after class/function definitions</li>
-<li><strong>Comments</strong>: Lines starting with <code>#</code></li>
-<li><strong>String literals</strong>: <code>"..."</code> and <code>'...'</code> (excluding docstrings)</li>
-</ul>
-<h3 id="rust"><a class="header" href="#rust">Rust</a></h3>
-<ul>
-<li><strong>Doc comments</strong>: <code>///</code> and <code>//!</code></li>
-<li><strong>Regular comments</strong>: <code>//</code> and <code>/* ... */</code></li>
-<li><strong>String literals</strong>: <code>"..."</code> and raw strings <code>r"..."</code></li>
-</ul>
-<h3 id="c"><a class="header" href="#c">C++</a></h3>
-<ul>
-<li><strong>Doc comments</strong>: <code>/**</code> and <code>///</code> (Doxygen-style)</li>
-<li><strong>Regular comments</strong>: <code>//</code> and <code>/* ... */</code></li>
-<li><strong>String literals</strong>: <code>"..."</code> and raw strings <code>R"(...)"</code></li>
-</ul>
-<h2 id="new-mcp-tool"><a class="header" href="#new-mcp-tool">New MCP Tool</a></h2>
-<h3 id="search_text"><a class="header" href="#search_text"><code>search_text</code></a></h3>
-<p>Search for text across comments, docstrings, and string literals.</p>
-<p><strong>Parameters:</strong></p>
-<pre><code class="language-python">{
-    "query": str,              # Search query (phrase, boolean, wildcards)
-    "element_type": Optional[str],  # 'comment', 'docstring', 'string_literal', 'all'
-    "limit": int = 20          # Maximum results
-}
+<p><strong>Search tool:</strong></p>
+<pre><code class="language-python">search_text(
+    query="connection pool",
+    element_type="docstring",  # or 'comment', 'string_literal', 'all'
+    limit=20
+)
 </code></pre>
-<p><strong>Returns:</strong></p>
-<pre><code class="language-python">[
-    {
-        "file_path": "src/db/pool.py",
-        "line_number": 42,
-        "element_type": "docstring",
-        "symbol_name": "ConnectionPool.__init__",
-        "content": "Initialize connection pool with size and timeout...",
-        "rank": 0.85  # Relevance score (0-1)
-    },
-    ...
-]
-</code></pre>
-<p><strong>Query syntax:</strong></p>
+<p><strong>Performance</strong>: FTS5 queries &lt;50ms vs grep 100-500ms (10-20x faster).</p>
+<h3 id="other-ideas"><a class="header" href="#other-ideas">Other Ideas</a></h3>
 <ul>
-<li>Simple: <code>"connection pool"</code></li>
-<li>Phrase: <code>"connection pooling optimization"</code></li>
-<li>Boolean: <code>"database AND (timeout OR deadline)"</code></li>
-<li>Wildcard: <code>"connect*"</code></li>
+<li><strong>Multi-Repository Support</strong> - Track symbols across related repos</li>
+<li><strong>Symbol References</strong> - Call graph: where symbols are used, not just defined</li>
+<li><strong>Import/Include Tracking</strong> - Index dependencies</li>
+<li><strong>AI-Powered Similar Code</strong> - Embeddings for semantic search</li>
 </ul>
-<h2 id="implementation-phases"><a class="header" href="#implementation-phases">Implementation Phases</a></h2>
-<h3 id="phase-1-schema--infrastructure-v090-alpha"><a class="header" href="#phase-1-schema--infrastructure-v090-alpha">Phase 1: Schema &amp; Infrastructure (v0.9.0-alpha)</a></h3>
+<hr>
+<h2 id="completed-features"><a class="header" href="#completed-features">Completed Features</a></h2>
+<h3 id="v010x---documentation--ci"><a class="header" href="#v010x---documentation--ci">v0.10.x - Documentation &amp; CI</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"> Add FTS5 table to database schema</li>
-<li><input disabled="" type="checkbox"> Migrate version bump (v4 → v5)</li>
-<li><input disabled="" type="checkbox"> Add text extraction utilities</li>
+<li>mdbook documentation with GitHub Pages</li>
+<li>PR preview workflow</li>
+<li>Mermaid diagrams in architecture docs</li>
 </ul>
-<h3 id="phase-2-python-support-v090-beta"><a class="header" href="#phase-2-python-support-v090-beta">Phase 2: Python Support (v0.9.0-beta)</a></h3>
+<h3 id="v09x---plugin-stability"><a class="header" href="#v09x---plugin-stability">v0.9.x - Plugin Stability</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"> Extract comments from Python AST</li>
-<li><input disabled="" type="checkbox"> Extract string literals from Python AST</li>
-<li><input disabled="" type="checkbox"> Index during repo-map generation</li>
-<li><input disabled="" type="checkbox"> Test on real codebases</li>
+<li>Database versioning for schema compatibility</li>
+<li>Plugin configuration validation tests</li>
+<li>E2E hook testing in CI</li>
 </ul>
-<h3 id="phase-3-rustc-support-v090"><a class="header" href="#phase-3-rustc-support-v090">Phase 3: Rust/C++ Support (v0.9.0)</a></h3>
+<h3 id="v080---multiprocess-architecture"><a class="header" href="#v080---multiprocess-architecture">v0.8.0 - Multiprocess Architecture</a></h3>
+<p>Changed from thread-based to subprocess-based indexing.</p>
+<p><strong>Why</strong>: Hung tree-sitter parsing would freeze the entire MCP server.</p>
+<p><strong>Solution</strong>:</p>
 <ul>
-<li><input disabled="" type="checkbox"> Extract comments from Rust tree-sitter</li>
-<li><input disabled="" type="checkbox"> Extract comments from C++ tree-sitter</li>
-<li><input disabled="" type="checkbox"> Extract string literals from both</li>
-<li><input disabled="" type="checkbox"> Full testing and documentation</li>
+<li><code>do_index()</code> spawns subprocess: <code>uv run scripts/generate-repo-map.py</code></li>
+<li>Watchdog can SIGKILL hung subprocess without affecting MCP server</li>
+<li>SQLite WAL handles concurrent read (MCP) / write (subprocess)</li>
 </ul>
-<h3 id="phase-4-mcp-tool-v090"><a class="header" href="#phase-4-mcp-tool-v090">Phase 4: MCP Tool (v0.9.0)</a></h3>
+<p><strong>Resource Limits</strong>:</p>
 <ul>
-<li><input disabled="" type="checkbox"> Implement <code>search_text</code> MCP tool</li>
-<li><input disabled="" type="checkbox"> Add relevance ranking</li>
-<li><input disabled="" type="checkbox"> Add query syntax support</li>
-<li><input disabled="" type="checkbox"> Update SKILL.md and mcp-help</li>
+<li>Memory: 4GB virtual address space</li>
+<li>CPU: 20 minutes timeout</li>
+<li>Watchdog checks every 60 seconds</li>
 </ul>
-<h2 id="updated-workflow"><a class="header" href="#updated-workflow">Updated Workflow</a></h2>
-<p><strong>New decision tree:</strong></p>
-<pre><code>Am I searching for something in code?
-├─ Searching for symbols (function/class/enum)?
-│  └─ Use: search_symbols / get_symbol_content
-│
-├─ Searching for concepts/documentation?
-│  └─ Use: search_text(element_type="comment") or search_text(element_type="docstring")
-│
-├─ Searching for error messages?
-│  └─ Use: search_text(element_type="string_literal")
-│
-└─ Searching for arbitrary text patterns?
-   └─ Use: Grep (for non-indexed files like markdown/JSON)
-</code></pre>
-<h2 id="performance-expectations"><a class="header" href="#performance-expectations">Performance Expectations</a></h2>
-<p><strong>Search speed:</strong></p>
+<h3 id="v07x---indexing-status--watchdog"><a class="header" href="#v07x---indexing-status--watchdog">v0.7.x - Indexing Status &amp; Watchdog</a></h3>
+<p>Added metadata table to track indexing status and detect hung processes.</p>
+<p><strong>Metadata keys</strong>: <code>status</code>, <code>db_version</code>, <code>last_indexed</code>, <code>symbol_count</code></p>
+<p><strong>Watchdog</strong>:</p>
 <ul>
-<li>FTS5 queries: &lt;50ms for most codebases</li>
-<li>Grep: 100-500ms depending on size</li>
-<li><strong>10-20x faster than grep for text searches</strong></li>
+<li>Detects indexing stuck &gt;10 minutes</li>
+<li>Sets <code>status='failed'</code> with error message</li>
+<li>Safety check prevents hung process from overwriting after watchdog intervention</li>
 </ul>
-<p><strong>Indexing time:</strong></p>
-<ul>
-<li>Text extraction adds ~20-30% to indexing time</li>
-<li>Still completes in background, no user impact</li>
-</ul>
-<h2 id="open-questions"><a class="header" href="#open-questions">Open Questions</a></h2>
-<ol>
-<li><strong>String literal filtering</strong>: Should we filter out very short strings (&lt; 5 chars) to reduce noise?</li>
-<li><strong>Comment filtering</strong>: Should we filter out copyright headers, license blocks?</li>
-<li><strong>Snippet length</strong>: How much context to return with each match?</li>
-<li><strong>Deduplication</strong>: Should we dedupe identical strings that appear multiple times?</li>
-</ol>
-<h2 id="alternatives-considered"><a class="header" href="#alternatives-considered">Alternatives Considered</a></h2>
-<h3 id="alternative-1-use-ripgrep-for-everything"><a class="header" href="#alternative-1-use-ripgrep-for-everything">Alternative 1: Use ripgrep for everything</a></h3>
-<ul>
-<li><strong>Pros</strong>: Already fast, no database bloat</li>
-<li><strong>Cons</strong>: No relevance ranking, no cross-file aggregation, spawns processes</li>
-</ul>
-<h3 id="alternative-2-index-full-file-content"><a class="header" href="#alternative-2-index-full-file-content">Alternative 2: Index full file content</a></h3>
-<ul>
-<li><strong>Pros</strong>: Can search any text</li>
-<li><strong>Cons</strong>: Database would be 100+ MB, duplicates all code</li>
-</ul>
-<h3 id="alternative-3-dont-implement-fts"><a class="header" href="#alternative-3-dont-implement-fts">Alternative 3: Don’t implement FTS</a></h3>
-<ul>
-<li><strong>Pros</strong>: Keep it simple</li>
-<li><strong>Cons</strong>: Miss opportunity for concept searches with relevance ranking</li>
-</ul>
-<p><strong>Decision: Implement Option 3 (minimal FTS)</strong> - Best balance of features vs complexity.</p>
 
                     </main>
 

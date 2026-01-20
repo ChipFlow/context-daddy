@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe43041f.js";
+            window.path_to_searchindex_js = "searchindex-63165925.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-8e48f370.js"></script>
+        <script src="toc-d5909834.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,35 +180,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="testing-documentation"><a class="header" href="#testing-documentation">Testing Documentation</a></h1>
-<h2 id="current-test-suite-v010x"><a class="header" href="#current-test-suite-v010x">Current Test Suite (v0.10.x)</a></h2>
-<h3 id="automated-test-files"><a class="header" href="#automated-test-files">Automated Test Files</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>File</th><th>Purpose</th><th>Tests</th></tr>
-</thead>
-<tbody>
-<tr><td><code>tests/test_plugin_config.py</code></td><td>Plugin configuration validation</td><td>7 tests</td></tr>
-<tr><td><code>tests/test_mcp_tools.py</code></td><td>MCP tool functionality</td><td>Symbol search, file operations</td></tr>
-<tr><td><code>tests/test_list_files.py</code></td><td>File listing with patterns</td><td>Glob matching, path resolution</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="ci-workflows"><a class="header" href="#ci-workflows">CI Workflows</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Workflow</th><th>Trigger</th><th>Purpose</th></tr>
-</thead>
-<tbody>
-<tr><td><code>ci.yml</code></td><td>push, PR</td><td>Structure validation, linting</td></tr>
-<tr><td><code>test-hooks.yml</code></td><td>push to main</td><td>E2E hook execution (requires <code>ANTHROPIC_API_KEY</code>)</td></tr>
-<tr><td><code>e2e-test.yml</code></td><td>manual</td><td>Full E2E testing with Claude</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="running-tests"><a class="header" href="#running-tests">Running Tests</a></h3>
+                        <h1 id="testing"><a class="header" href="#testing">Testing</a></h1>
+<h2 id="running-tests"><a class="header" href="#running-tests">Running Tests</a></h2>
 <pre><code class="language-bash"># Run all unit tests
 uv run pytest tests/
 
@@ -218,7 +191,36 @@ uv run pytest tests/test_plugin_config.py
 # Run plugin config validation (standalone)
 uv run tests/test_plugin_config.py
 </code></pre>
-<h3 id="plugin-configuration-tests-v096"><a class="header" href="#plugin-configuration-tests-v096">Plugin Configuration Tests (v0.9.6+)</a></h3>
+<h2 id="test-files"><a class="header" href="#test-files">Test Files</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>tests/test_plugin_config.py</code></td><td>Plugin configuration validation (7 tests)</td></tr>
+<tr><td><code>tests/test_mcp_tools.py</code></td><td>MCP tool functionality</td></tr>
+<tr><td><code>tests/test_list_files.py</code></td><td>File listing with glob patterns</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="ci-workflows"><a class="header" href="#ci-workflows">CI Workflows</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Workflow</th><th>Trigger</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ci.yml</code></td><td>push, PR</td><td>Structure validation, script tests</td></tr>
+<tr><td><code>test-hooks.yml</code></td><td>push to main</td><td>E2E hook execution</td></tr>
+<tr><td><code>e2e-test.yml</code></td><td>manual</td><td>Full E2E testing with Claude</td></tr>
+<tr><td><code>pages.yml</code></td><td>push to main</td><td>Deploy documentation</td></tr>
+<tr><td><code>preview-docs.yml</code></td><td>PR</td><td>Documentation preview</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Note</strong>: E2E tests require <code>ANTHROPIC_API_KEY</code> secret.</p>
+<h2 id="plugin-configuration-tests"><a class="header" href="#plugin-configuration-tests">Plugin Configuration Tests</a></h2>
 <p><code>test_plugin_config.py</code> validates:</p>
 <ol>
 <li><strong>Required fields</strong> - plugin.json has name, version, description, author, keywords, repository</li>
@@ -229,212 +231,33 @@ uv run tests/test_plugin_config.py
 <li><strong>MCP servers</strong> - Referenced server scripts exist</li>
 <li><strong>Version consistency</strong> - plugin.json and marketplace.json versions match</li>
 </ol>
-<h3 id="e2e-hook-tests-v096"><a class="header" href="#e2e-hook-tests-v096">E2E Hook Tests (v0.9.6+)</a></h3>
+<h2 id="e2e-hook-tests"><a class="header" href="#e2e-hook-tests">E2E Hook Tests</a></h2>
 <p><code>.github/workflows/test-hooks.yml</code> tests:</p>
 <ul>
 <li><strong>SessionStart hook</strong> - Creates .claude directory and manifest</li>
 <li><strong>PreCompact + Stop hooks</strong> - Verifies compaction flow via turn limits</li>
 <li><strong>Artifact verification</strong> - Checks repo-map.db creation and MCP logs</li>
 </ul>
-<hr>
-<h2 id="historical-testing"><a class="header" href="#historical-testing">Historical Testing</a></h2>
-<h3 id="v080---multiprocess-architecture"><a class="header" href="#v080---multiprocess-architecture">v0.8.0+ - Multiprocess Architecture</a></h3>
-<p>The v0.8.0 release changed from thread-based to multiprocess indexing.</p>
-<p><strong>Key changes tested:</strong></p>
+<h2 id="test-guarantees"><a class="header" href="#test-guarantees">Test Guarantees</a></h2>
+<h3 id="transaction-safety"><a class="header" href="#transaction-safety">Transaction Safety</a></h3>
 <ul>
-<li>Subprocess spawning for indexing</li>
-<li>MCP server remains responsive during indexing</li>
-<li>Watchdog can SIGKILL hung subprocess</li>
-<li>SQLite WAL handles concurrent read/write</li>
-<li>Resource limits (4GB memory, 20min CPU time)</li>
+<li>All database writes in single BEGIN IMMEDIATE / COMMIT block</li>
+<li>WAL mode enabled for crash safety</li>
+<li>Atomic rename only after successful commit</li>
+<li>Rollback on exception (no partial state)</li>
 </ul>
-<hr>
-<h2 id="v071---transaction-safety-and-watchdog-testing"><a class="header" href="#v071---transaction-safety-and-watchdog-testing">v0.7.1 - Transaction Safety and Watchdog Testing</a></h2>
-<h3 id="test-suite-summary"><a class="header" href="#test-suite-summary">Test Suite Summary</a></h3>
-<p>All tests passed ✓</p>
-<h3 id="1-transaction-safety-tests"><a class="header" href="#1-transaction-safety-tests">1. Transaction Safety Tests</a></h3>
-<p><strong>Test: Single-transaction commit</strong></p>
+<h3 id="watchdog"><a class="header" href="#watchdog">Watchdog</a></h3>
 <ul>
-<li>Verified status persisted correctly after commit</li>
-<li>Confirmed all-or-nothing semantics</li>
-<li>Result: ✓ PASS</li>
+<li>Detects indexing hung &gt;10 minutes</li>
+<li>Sets status=‘failed’ with error message</li>
+<li>Prevents hung process from overwriting after intervention</li>
+<li>Runs on server startup and every 60 seconds</li>
 </ul>
-<p><strong>Test: WAL mode enabled</strong></p>
+<h3 id="data-integrity"><a class="header" href="#data-integrity">Data Integrity</a></h3>
 <ul>
-<li>Verified <code>PRAGMA journal_mode</code> returns ‘WAL’</li>
-<li>Ensures crash-safety for interrupted writes</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Watchdog overwrite protection</strong></p>
-<ul>
-<li>Simulated watchdog marking database as ‘failed’</li>
-<li>Created temp database with ‘completed’ status</li>
-<li>Verified safety check prevents rename if status=‘failed’</li>
-<li>Verified temp file cleaned up properly</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Metadata persistence</strong></p>
-<ul>
-<li>Verified metadata table structure (key TEXT PRIMARY KEY, value TEXT)</li>
-<li>Confirmed required keys present: status, symbol_count, last_indexed</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="2-watchdog-detection-tests"><a class="header" href="#2-watchdog-detection-tests">2. Watchdog Detection Tests</a></h3>
-<p><strong>Test: Detects hung indexing (&gt;10 minutes)</strong></p>
-<ul>
-<li>Set index_start_time to 15 minutes ago</li>
-<li>Verified watchdog detects elapsed &gt; 600 seconds</li>
-<li>Confirmed status changed to ‘failed’</li>
-<li>Confirmed error_message set correctly</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Allows recent indexing (&lt;10 minutes)</strong></p>
-<ul>
-<li>Set index_start_time to current time</li>
-<li>Verified watchdog does NOT trigger</li>
-<li>Confirmed status remains ‘indexing’</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Real process detection</strong></p>
-<ul>
-<li>Started actual Python process with indexing status</li>
-<li>Backdated timestamp to 15 minutes ago</li>
-<li>Froze process with SIGSTOP</li>
-<li>Ran watchdog check</li>
-<li>Verified status changed to ‘failed’</li>
-<li>Resumed process with SIGCONT</li>
-<li>Verified process couldn’t change status back</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="3-race-condition-tests"><a class="header" href="#3-race-condition-tests">3. Race Condition Tests</a></h3>
-<p><strong>Test: Hung process completing after watchdog</strong></p>
-<ul>
-<li>Started slow indexer process (20 second delay)</li>
-<li>Backdated timestamp to trigger watchdog</li>
-<li>Ran watchdog → status=‘failed’</li>
-<li>Let process complete and try to write</li>
-<li>Verified safety check prevented database overwrite</li>
-<li>Confirmed original symbols intact (79 symbols)</li>
-<li>Confirmed status remained ‘failed’</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Concurrent status checks</strong></p>
-<ul>
-<li>Performed 10 concurrent reads of metadata</li>
-<li>Verified no data corruption</li>
-<li>Verified metadata count &gt;= 3 (status, symbol_count, last_indexed)</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="4-error-handling-tests"><a class="header" href="#4-error-handling-tests">4. Error Handling Tests</a></h3>
-<p><strong>Test: Recovery from failed state</strong></p>
-<ul>
-<li>Set status to ‘failed’ with error message</li>
-<li>Started new indexing (status=‘indexing’)</li>
-<li>Cleared error_message</li>
-<li>Completed successfully (status=‘completed’)</li>
-<li>Verified error message deleted</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Explicit indexing error</strong></p>
-<ul>
-<li>Set status=‘failed’ with error message</li>
-<li>Verified error persisted in metadata table</li>
-<li>Verified status can be read correctly</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="5-auto-wait-behavior-tests"><a class="header" href="#5-auto-wait-behavior-tests">5. Auto-Wait Behavior Tests</a></h3>
-<p><strong>Test: Auto-wait detects indexing in progress</strong></p>
-<ul>
-<li>Set status=‘indexing’</li>
-<li>Verified polling detects status correctly</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Auto-wait completes on success</strong></p>
-<ul>
-<li>Set status=‘indexing’</li>
-<li>Simulated background completion after 3 seconds</li>
-<li>Verified wait_for_indexing() polls every second</li>
-<li>Confirmed returns success=True when completed</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<p><strong>Test: Auto-wait times out</strong></p>
-<ul>
-<li>Tested with 10-second timeout</li>
-<li>Verified timeout behavior (returns success=False)</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h3 id="6-end-to-end-integration-tests"><a class="header" href="#6-end-to-end-integration-tests">6. End-to-End Integration Tests</a></h3>
-<p><strong>Test: Full indexing workflow</strong></p>
-<ul>
-<li>Ran <code>uv run scripts/generate-repo-map.py .</code></li>
-<li>Verified 79 symbols indexed</li>
-<li>Confirmed metadata: status=‘completed’, symbol_count=‘79’</li>
-<li>Verified no temp files left behind</li>
-<li>Result: ✓ PASS</li>
-</ul>
-<h2 id="test-coverage"><a class="header" href="#test-coverage">Test Coverage</a></h2>
-<h3 id="data-corruption-scenarios-tested"><a class="header" href="#data-corruption-scenarios-tested">Data Corruption Scenarios Tested</a></h3>
-<ol>
-<li>✓ Process killed after DELETE but before INSERT</li>
-<li>✓ Multiple premature commits creating partial state</li>
-<li>✓ Hung process completing after watchdog intervention</li>
-<li>✓ Concurrent reads during indexing</li>
-<li>✓ Recovery from failed/crashed indexing</li>
-<li>✓ Watchdog detecting and resetting hung processes</li>
-<li>✓ Safety check preventing overwrite after watchdog</li>
-</ol>
-<h3 id="transaction-safety-guarantees"><a class="header" href="#transaction-safety-guarantees">Transaction Safety Guarantees</a></h3>
-<ol>
-<li>✓ All writes in single BEGIN IMMEDIATE / COMMIT block</li>
-<li>✓ Rollback on exception (no partial state)</li>
-<li>✓ WAL mode enabled (crash-safe)</li>
-<li>✓ Atomic rename only after successful commit</li>
-<li>✓ Safety check before rename prevents watchdog race</li>
-<li>✓ set_metadata() no longer commits internally</li>
-</ol>
-<h3 id="watchdog-guarantees"><a class="header" href="#watchdog-guarantees">Watchdog Guarantees</a></h3>
-<ol>
-<li>✓ Detects indexing hung &gt;10 minutes (600 seconds)</li>
-<li>✓ Sets status=‘failed’ with descriptive error message</li>
-<li>✓ Prevents hung process from overwriting after intervention</li>
-<li>✓ Runs on server startup and every 60 seconds</li>
-<li>✓ Handles edge cases (missing timestamp, invalid format)</li>
-</ol>
-<h2 id="critical-bug-fixes-verified"><a class="header" href="#critical-bug-fixes-verified">Critical Bug Fixes Verified</a></h2>
-<h3 id="before-v071-vulnerable"><a class="header" href="#before-v071-vulnerable">Before v0.7.1 (Vulnerable)</a></h3>
-<ul>
-<li>❌ set_metadata() committed 3 times during one write</li>
-<li>❌ No transaction wrapper (DELETE/INSERT separate)</li>
-<li>❌ Hung process could overwrite after watchdog</li>
-<li>❌ No rollback on error</li>
-<li>❌ Process kill after DELETE = empty table</li>
-</ul>
-<h3 id="after-v071-fixed"><a class="header" href="#after-v071-fixed">After v0.7.1 (Fixed)</a></h3>
-<ul>
-<li>✓ Single commit for entire write operation</li>
-<li>✓ Explicit transaction with BEGIN IMMEDIATE</li>
-<li>✓ Safety check prevents watchdog race condition</li>
-<li>✓ Rollback on exception</li>
-<li>✓ WAL + transaction = crash-safe even during kill</li>
-</ul>
-<h2 id="test-execution"><a class="header" href="#test-execution">Test Execution</a></h2>
-<p>All tests can be re-run with:</p>
-<pre><code class="language-bash"># Unit tests (in Python REPL)
-python3 /tmp/test_watchdog_real_process.py
-python3 /tmp/test_hung_process_completes.py
-
-# Integration test
-uv run scripts/generate-repo-map.py .
-sqlite3 .claude/repo-map.db "SELECT key, value FROM metadata ORDER BY key"
-</code></pre>
-<h2 id="test-metrics"><a class="header" href="#test-metrics">Test Metrics</a></h2>
-<ul>
-<li><strong>Total test cases</strong>: 18</li>
-<li><strong>Passed</strong>: 18</li>
-<li><strong>Failed</strong>: 0</li>
-<li><strong>Test coverage</strong>: Transaction safety, watchdog, race conditions, error handling, auto-wait</li>
-<li><strong>Critical scenarios tested</strong>: 7</li>
-<li><strong>Edge cases tested</strong>: 11</li>
+<li>Safety check before rename prevents watchdog race condition</li>
+<li>Concurrent reads during indexing handled by SQLite WAL</li>
+<li>Recovery from failed/crashed indexing supported</li>
 </ul>
 
                     </main>
@@ -445,7 +268,7 @@ sqlite3 .claude/repo-map.db "SELECT key, value FROM metadata ORDER BY key"
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="roadmap.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="development.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -459,7 +282,7 @@ sqlite3 .claude/repo-map.db "SELECT key, value FROM metadata ORDER BY key"
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="roadmap.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="development.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
