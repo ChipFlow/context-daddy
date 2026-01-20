@@ -10,3 +10,10 @@ build-dir = "book"
 [output.html]
 git-repository-url = "https://github.com/ChipFlow/context-daddy"
 edit-url-template = "https://github.com/ChipFlow/context-daddy/edit/main/{path}"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html.playground]
+runnable = false

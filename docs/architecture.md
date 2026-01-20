@@ -4,37 +4,34 @@
 
 **Key Finding:** Tree-sitter is **NOT** a subprocess - it's a native C extension that runs **in-process**.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Python Process (PID: 12345)                                │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ Python Interpreter                                     │ │
-│  │                                                        │ │
-│  │  ┌──────────────────────────────────────────────────┐ │ │
-│  │  │ generate-repo-map.py                             │ │ │
-│  │  │                                                  │ │ │
-│  │  │  • find_python_files()                          │ │ │
-│  │  │  • for file in files:                           │ │ │
-│  │  │      extract_symbols_from_python(file) ────┐    │ │ │
-│  │  │                                            │    │ │ │
-│  │  └────────────────────────────────────────────┼────┘ │ │
-│  │                                               │      │ │
-│  │  ┌────────────────────────────────────────────▼────┐ │ │
-│  │  │ tree_sitter._binding.cpython-313-darwin.so    │ │ │
-│  │  │ (Native C Extension - SAME PROCESS)           │ │ │
-│  │  │                                               │ │ │
-│  │  │  • parser.parse(source_bytes)                │ │ │
-│  │  │  • Native C code executing                   │ │ │
-│  │  │  • Returns Tree object to Python             │ │ │
-│  │  └───────────────────────────────────────────────┘ │ │
-│  │                                                      │ │
-│  └──────────────────────────────────────────────────────┘ │
-│                                                              │
-│  Memory Space: All shared                                   │
-│  Threads: 1 (MainThread only)                               │
-│  Child Processes: 0                                          │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Process["🐍 Python Process (PID: 12345)"]
+        subgraph Interpreter["Python Interpreter"]
+            subgraph Script["generate-repo-map.py"]
+                A["find_python_files()"]
+                B["for file in files:"]
+                C["extract_symbols_from_python(file)"]
+                A --> B --> C
+            end
+            subgraph TreeSitter["⚙️ tree_sitter._binding.cpython-313-darwin.so<br/>(Native C Extension - SAME PROCESS)"]
+                D["parser.parse(source_bytes)"]
+                E["Native C code executing"]
+                F["Returns Tree object to Python"]
+                D --> E --> F
+            end
+            C --> D
+        end
+        Info["Memory Space: All shared<br/>Threads: 1 (MainThread only)<br/>Child Processes: 0"]
+    end
+
+    classDef process fill:#E6E6FA,stroke:#333,stroke-width:2px,color:darkblue
+    classDef native fill:#FFB6C1,stroke:#333,stroke-width:2px,color:black
+    classDef info fill:#F0F0F0,stroke:#666,stroke-width:1px,color:#333
+
+    class Process process
+    class TreeSitter native
+    class Info info
 ```
 
 ## What This Means for Hung Processes
@@ -139,53 +136,84 @@ All loaded into **same address space** - no IPC, no subprocess spawning.
 ## Architecture Evolution
 
 ### v0.5.x: PreToolUse Hook (Deprecated)
-```
-┌─────────────────────────────────────────────┐
-│ Claude Code Process                          │
-│  └─ PreToolUse hook                         │
-│      └─ nohup generate-repo-map.py &        │  ← SUBPROCESS!
-│          └─ python3 (PID: 12346)            │
-│              └─ tree_sitter (in-process)    │
-└─────────────────────────────────────────────┘
 
-Problem: Multiple background processes accumulate
-Memory leak: Each subprocess loads tree-sitter (~500MB)
+```mermaid
+flowchart TB
+    subgraph Claude["🤖 Claude Code Process"]
+        Hook["PreToolUse hook"]
+        Hook --> Spawn["nohup generate-repo-map.py &"]
+    end
+    Spawn -.->|"⚠️ SUBPROCESS!"| Python
+    subgraph Python["🐍 python3 (PID: 12346)"]
+        TS["⚙️ tree_sitter (in-process)"]
+    end
+
+    classDef deprecated fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,color:black
+    class Claude,Python deprecated
 ```
+
+**Problems:**
+- ❌ Multiple background processes accumulate
+- ❌ Memory leak: Each subprocess loads tree-sitter (~500MB)
 
 ### v0.6.0 - v0.7.x: Thread-Based Indexing (Deprecated)
-```
-┌─────────────────────────────────────────────┐
-│ MCP Server Process (repo-map-server.py)     │
-│  └─ Background thread calls do_index()     │
-│      └─ tree_sitter (in-process)           │
-└─────────────────────────────────────────────┘
 
-Solution: Single persistent process
-Memory: One tree-sitter instance
-Problem: Hung tree-sitter freezes entire MCP server
-Watchdog: Can detect but can't kill without killing MCP
+```mermaid
+flowchart TB
+    subgraph MCP["⚙️ MCP Server Process (repo-map-server.py)"]
+        Thread["Background thread calls do_index()"]
+        TS["⚙️ tree_sitter (in-process)"]
+        Thread --> TS
+    end
+
+    classDef deprecated fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,color:black
+    class MCP deprecated
 ```
+
+**Trade-offs:**
+- ✅ Single persistent process
+- ✅ One tree-sitter instance
+- ❌ Hung tree-sitter freezes entire MCP server
+- ❌ Watchdog can detect but can't kill without killing MCP
 
 ### v0.8.0+: Multiprocess Architecture (Current)
-```
-┌─────────────────────────────────────────────┐
-│ MCP Server Process (repo-map-server.py)     │
-│  └─ Spawns subprocess via do_index()       │
-│      └─ tracks _indexing_process: Popen    │
-│      └─ watchdog can SIGKILL subprocess    │
-│                                              │
-│  Subprocess (PID: 12347)                    │
-│  ┌──────────────────────────────────────┐  │
-│  │ generate-repo-map.py                 │  │
-│  │  └─ tree_sitter (in-process)        │  │
-│  └──────────────────────────────────────┘  │
-└─────────────────────────────────────────────┘
 
-Solution: Clean process isolation
-MCP server: Always responsive
-Watchdog: Can kill subprocess without affecting MCP
-SQLite WAL: Handles concurrent read/write safely
+```mermaid
+flowchart TB
+    subgraph MCP["⚙️ MCP Server Process (repo-map-server.py)"]
+        Spawn["Spawns subprocess via do_index()"]
+        Track["tracks _indexing_process: Popen"]
+        Watchdog["🐕 watchdog can SIGKILL subprocess"]
+        Spawn --> Track
+        Track --> Watchdog
+    end
+
+    MCP -.->|"spawns"| Sub
+
+    subgraph Sub["🐍 Subprocess (PID: 12347)"]
+        Script["generate-repo-map.py"]
+        TS["⚙️ tree_sitter (in-process)"]
+        Script --> TS
+    end
+
+    DB[(💾 SQLite WAL)]
+    MCP <-->|"read"| DB
+    Sub -->|"write"| DB
+
+    classDef current fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
+    classDef subprocess fill:#87CEEB,stroke:#333,stroke-width:2px,color:darkblue
+    classDef db fill:#E6E6FA,stroke:#333,stroke-width:2px,color:darkblue
+
+    class MCP current
+    class Sub subprocess
+    class DB db
 ```
+
+**Benefits:**
+- ✅ Clean process isolation
+- ✅ MCP server always responsive
+- ✅ Watchdog can kill subprocess without affecting MCP
+- ✅ SQLite WAL handles concurrent read/write safely
 
 ## Key Architectural Decisions
 
@@ -314,11 +342,19 @@ When schema needs to change:
 ## Summary
 
 Tree-sitter process "tree":
-```
-generate-repo-map.py
- └─ (no child processes)
- └─ (no threads)
- └─ (just native C library loaded in-process)
+
+```mermaid
+flowchart TB
+    Script["🐍 generate-repo-map.py"]
+    Script --- NoChild["❌ (no child processes)"]
+    Script --- NoThread["❌ (no threads)"]
+    Script --- Native["⚙️ (just native C library loaded in-process)"]
+
+    classDef main fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
+    classDef note fill:#F0F0F0,stroke:#666,stroke-width:1px,color:#333
+
+    class Script main
+    class NoChild,NoThread,Native note
 ```
 
 It's a **flat single-process architecture**, not a process tree.
