@@ -6,7 +6,9 @@
 
 ## What
 
-A Claude Code plugin for understanding large codebases:
+Context Daddy is a sophisticated code understanding plugin for Claude Code that fundamentally changes how AI assistants explore and comprehend large codebases. By combining tree-sitter parsing, intelligent caching, and a custom MCP (Model Context Protocol) server, we're creating a system that can quickly generate semantic maps of entire repositories and provide fast, targeted code retrieval without overwhelming context windows. The project now includes narrative documentation tools that capture the evolving "tribal knowledge" of codebases - the stories, gotchas, and hard-won insights that traditional documentation misses.
+
+Built in tools include:
 - **Fast symbol search** - 10-100x faster than grep via MCP tools
 - **Living narratives** - Capture the "why", not just the "what"
 - **Tribal knowledge** - Dragons, gotchas, and hard-won insights that survive context compaction
