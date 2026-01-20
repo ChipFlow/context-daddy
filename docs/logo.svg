@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="180" viewBox="0 0 200 180">
+  <title>context daddy logo</title>
+
+  <!-- Steam -->
+  <path d="M 55 38 Q 58 28 55 18 Q 52 8 55 0" fill="none" stroke="#bbbbbb" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 85 35 Q 88 25 85 15 Q 82 5 85 -3" fill="none" stroke="#bbbbbb" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 115 38 Q 118 28 115 18 Q 112 8 115 0" fill="none" stroke="#bbbbbb" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Mug shadow -->
+  <ellipse cx="85" cy="158" rx="55" ry="8" fill="#e0e0e0" opacity="0.5"/>
+
+  <!-- Mug body -->
+  <path d="M 25 52 L 28 145 Q 30 162 85 162 Q 140 162 142 145 L 145 52 Z" fill="#ffffff" stroke="#444444" stroke-width="3"/>
+
+  <!-- Inner rim shadow -->
+  <ellipse cx="85" cy="52" rx="58" ry="10" fill="#f8f8f8" stroke="none"/>
+
+  <!-- Mug handle -->
+  <path d="M 145 68 Q 148 68 155 72 Q 175 82 175 98 Q 175 114 155 124 Q 148 128 145 128" fill="#ffffff" stroke="#444444" stroke-width="3"/>
+
+  <!-- Mug rim -->
+  <ellipse cx="85" cy="52" rx="62" ry="12" fill="#f5f5f5" stroke="#444444" stroke-width="3"/>
+
+  <!-- Inner rim ellipse -->
+  <ellipse cx="85" cy="52" rx="54" ry="9" fill="none" stroke="#cccccc" stroke-width="1"/>
+
+  <!-- "Context" - cylindrical projection: edges wider, middle narrower, verticals straight -->
+  <g font-family="Georgia, serif" font-weight="bold" fill="#c0392b">
+    <!-- C -->
+    <text x="32" y="92" font-size="20" transform="scale(0.75,1)" transform-origin="32 92">C</text>
+    <!-- o -->
+    <text x="46" y="94" font-size="20" transform="scale(0.82,1)" transform-origin="46 94">o</text>
+    <!-- n -->
+    <text x="59" y="95" font-size="20" transform="scale(0.88,1)" transform-origin="59 95">n</text>
+    <!-- t -->
+    <text x="73" y="96" font-size="20" transform="scale(0.92,1)" transform-origin="73 96">t</text>
+    <!-- e -->
+    <text x="82" y="96" font-size="20" transform="scale(0.92,1)" transform-origin="82 96">e</text>
+    <!-- x -->
+    <text x="95" y="95" font-size="20" transform="scale(0.88,1)" transform-origin="95 95">x</text>
+    <!-- t -->
+    <text x="109" y="94" font-size="20" transform="scale(0.82,1)" transform-origin="109 94">t</text>
+  </g>
+
+  <!-- "Daddy!" - cylindrical projection -->
+  <g font-family="Georgia, serif" font-weight="bold" fill="#c0392b">
+    <!-- D -->
+    <text x="38" y="125" font-size="22" transform="scale(0.75,1)" transform-origin="38 125">D</text>
+    <!-- a -->
+    <text x="54" y="127" font-size="22" transform="scale(0.82,1)" transform-origin="54 127">a</text>
+    <!-- d -->
+    <text x="68" y="128" font-size="22" transform="scale(0.90,1)" transform-origin="68 128">d</text>
+    <!-- d -->
+    <text x="82" y="129" font-size="22" transform="scale(0.92,1)" transform-origin="82 129">d</text>
+    <!-- y -->
+    <text x="97" y="128" font-size="22" transform="scale(0.90,1)" transform-origin="97 128">y</text>
+    <!-- ! -->
+    <text x="112" y="127" font-size="22" transform="scale(0.82,1)" transform-origin="112 127">!</text>
+  </g>
+</svg>

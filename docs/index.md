@@ -6,10 +6,10 @@ Internal documentation for context-daddy development.
 
 | Document | Description |
 |----------|-------------|
+| [The Story So Far](story.md) | Project narrative, lessons learned, dragons |
 | [Architecture](architecture.md) | System architecture, components, data flow |
 | [Testing](testing.md) | Test suite, CI workflows, guarantees |
 | [Development](development.md) | Planned features, design decisions, history |
-| [The Story So Far](story.md) | Project narrative, lessons learned, dragons |
 
 ## Quick Links
 
