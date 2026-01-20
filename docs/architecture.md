@@ -14,62 +14,23 @@ The core philosophy: help Claude build understanding through structured symbol m
 ## System Architecture
 
 ```mermaid
-flowchart TB
-    subgraph ClaudeCode["Claude Code"]
-        Session["Session"]
-        Hooks["Hooks Engine"]
-    end
+flowchart LR
+    CC[Claude Code] -->|hooks| Hooks[Hook Scripts]
+    CC <-->|MCP| Server[MCP Server]
 
-    subgraph Plugin["context-daddy Plugin"]
-        subgraph HookScripts["Hook Scripts"]
-            SessionStart["session-start.sh"]
-            Stop["stop-reorient.sh"]
-        end
+    Server -->|spawns| Indexer[Indexer]
+    Server -->|queries| DB[(repo-map.db)]
+    Indexer -->|writes| DB
 
-        subgraph MCPServer["MCP Server"]
-            Tools["Tool Handlers"]
-            Watchdog["Watchdog"]
-        end
-
-        subgraph Indexing["Indexing Subprocess"]
-            TreeSitter["Tree-sitter Parser"]
-            MapGen["map.py"]
-        end
-
-        subgraph Narrative["Narrative System"]
-            GenNarrative["generate-narrative.py"]
-            UpdateNarrative["update-narrative.py"]
-        end
-    end
-
-    subgraph Storage["Storage (.claude/)"]
-        DB[(repo-map.db)]
-        NarrativeMD["narrative.md"]
-        Learnings["learnings.md"]
-    end
-
-    Session --> Hooks
-    Hooks --> SessionStart
-    Hooks --> Stop
-
-    Session <-->|"MCP Protocol"| MCPServer
-    Tools --> DB
-    Watchdog --> Indexing
-
-    MCPServer -->|"spawns"| Indexing
-    Indexing --> DB
-
-    GenNarrative --> NarrativeMD
-    UpdateNarrative --> NarrativeMD
-    Stop --> NarrativeMD
+    Hooks -->|updates| Narrative[narrative.md]
 
     classDef claude fill:#E6E6FA,stroke:#333,stroke-width:2px,color:darkblue
-    classDef plugin fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
+    classDef component fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
     classDef storage fill:#87CEEB,stroke:#333,stroke-width:2px,color:darkblue
 
-    class ClaudeCode claude
-    class Plugin,HookScripts,MCPServer,Indexing,Narrative plugin
-    class Storage,DB,NarrativeMD,Learnings storage
+    class CC claude
+    class Hooks,Server,Indexer component
+    class DB,Narrative storage
 ```
 
 ## Core Components
