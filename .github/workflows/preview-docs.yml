@@ -1,0 +1,39 @@
+name: PR Documentation Preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency: preview-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup mdbook
+        if: github.event.action != 'closed'
+        uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: 'latest'
+
+      - name: Build documentation
+        if: github.event.action != 'closed'
+        run: mdbook build
+
+      - name: Ensure .nojekyll exists
+        if: github.event.action != 'closed'
+        run: touch book/.nojekyll
+
+      - name: Deploy PR preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: book
+          umbrella-dir: pr-preview
+          action: auto
