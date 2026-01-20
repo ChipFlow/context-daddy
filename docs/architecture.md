@@ -1,360 +1,264 @@
-# Process Architecture
+# Architecture
 
-## Tree-Sitter Process Structure
+## Overview
 
-**Key Finding:** Tree-sitter is **NOT** a subprocess - it's a native C extension that runs **in-process**.
+context-daddy is a Claude Code plugin that helps AI assistants understand large codebases quickly and efficiently. It combines:
+
+- **Tree-sitter parsing** - Extract semantic symbols (functions, classes, methods) from source code
+- **SQLite caching** - Fast retrieval without re-parsing
+- **MCP server** - Expose tools for code exploration
+- **Narrative documentation** - Capture tribal knowledge that survives across sessions
+
+The core philosophy: help Claude build understanding through structured symbol maps before diving into specific implementations.
+
+## System Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Process["🐍 Python Process (PID: 12345)"]
-        subgraph Interpreter["Python Interpreter"]
-            subgraph Script["generate-repo-map.py"]
-                A["find_python_files()"]
-                B["for file in files:"]
-                C["extract_symbols_from_python(file)"]
-                A --> B --> C
-            end
-            subgraph TreeSitter["⚙️ tree_sitter._binding.cpython-313-darwin.so<br/>(Native C Extension - SAME PROCESS)"]
-                D["parser.parse(source_bytes)"]
-                E["Native C code executing"]
-                F["Returns Tree object to Python"]
-                D --> E --> F
-            end
-            C --> D
+    subgraph ClaudeCode["Claude Code"]
+        Session["Session"]
+        Hooks["Hooks Engine"]
+    end
+
+    subgraph Plugin["context-daddy Plugin"]
+        subgraph HookScripts["Hook Scripts"]
+            SessionStart["session-start.sh"]
+            Stop["stop-reorient.sh"]
         end
-        Info["Memory Space: All shared<br/>Threads: 1 (MainThread only)<br/>Child Processes: 0"]
+
+        subgraph MCPServer["MCP Server"]
+            Tools["Tool Handlers"]
+            Watchdog["Watchdog"]
+        end
+
+        subgraph Indexing["Indexing Subprocess"]
+            TreeSitter["Tree-sitter Parser"]
+            MapGen["map.py"]
+        end
+
+        subgraph Narrative["Narrative System"]
+            GenNarrative["generate-narrative.py"]
+            UpdateNarrative["update-narrative.py"]
+        end
     end
 
-    classDef process fill:#E6E6FA,stroke:#333,stroke-width:2px,color:darkblue
-    classDef native fill:#FFB6C1,stroke:#333,stroke-width:2px,color:black
-    classDef info fill:#F0F0F0,stroke:#666,stroke-width:1px,color:#333
+    subgraph Storage["Storage (.claude/)"]
+        DB[(repo-map.db)]
+        NarrativeMD["narrative.md"]
+        Learnings["learnings.md"]
+    end
 
-    class Process process
-    class TreeSitter native
-    class Info info
+    Session --> Hooks
+    Hooks --> SessionStart
+    Hooks --> Stop
+
+    Session <-->|"MCP Protocol"| MCPServer
+    Tools --> DB
+    Watchdog --> Indexing
+
+    MCPServer -->|"spawns"| Indexing
+    Indexing --> DB
+
+    GenNarrative --> NarrativeMD
+    UpdateNarrative --> NarrativeMD
+    Stop --> NarrativeMD
+
+    classDef claude fill:#E6E6FA,stroke:#333,stroke-width:2px,color:darkblue
+    classDef plugin fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
+    classDef storage fill:#87CEEB,stroke:#333,stroke-width:2px,color:darkblue
+
+    class ClaudeCode claude
+    class Plugin,HookScripts,MCPServer,Indexing,Narrative plugin
+    class Storage,DB,NarrativeMD,Learnings storage
 ```
 
-## What This Means for Hung Processes
+## Core Components
 
-### Scenario: Tree-sitter Parser Hangs
+### MCP Server (`servers/repo-map-server.py`)
 
-If `parser.parse()` hangs (e.g., infinite loop in C code):
+The MCP server provides tools for code exploration:
 
-```
-1. Python calls parser.parse(source)
-2. Control transfers to native C code
-3. C code enters infinite loop
-4. Python thread BLOCKED waiting for C to return
-5. ENTIRE PROCESS frozen (not just a subprocess)
-```
+| Tool | Purpose |
+|------|---------|
+| `search_symbols` | Find functions/classes by name pattern (glob wildcards) |
+| `get_symbol_content` | Get source code of a specific symbol |
+| `get_file_symbols` | List all symbols in a file |
+| `list_files` | List indexed files with optional glob filter |
+| `reindex_repo_map` | Trigger re-indexing |
+| `repo_map_status` | Check indexing status |
+| `md_outline` | Get markdown document structure |
+| `md_get_section` | Get content under a heading |
 
-**Effect of SIGSTOP:**
-- Freezes the ENTIRE Python process
-- Freezes tree-sitter C code execution
-- Freezes Python interpreter
-- No child processes to kill separately
+The server runs persistently during Claude sessions and handles concurrent requests while indexing runs in the background.
 
-**Effect of SIGKILL:**
-- Kills the ENTIRE Python process
-- Kills tree-sitter C code execution
-- Process terminates immediately
-- SQLite transaction rolled back (WAL ensures safety)
+### Indexing Pipeline (`scripts/map.py`)
 
-### Why Our Watchdog Works
+The indexer uses tree-sitter to parse source files and extract:
+- Function/method signatures and docstrings
+- Class definitions and inheritance
+- Module-level constants and variables
 
-**Without Watchdog:**
-```
-Time 0:   Process starts indexing (status='indexing')
-Time 5m:  tree_sitter hangs in C code
-Time ∞:   Process frozen forever, status stuck at 'indexing'
-          Database locked, no way to recover
-```
+**Supported languages**: Python, JavaScript/TypeScript, Rust, Go, C/C++, Java, Ruby, and more.
 
-**With Watchdog (v0.7.0+):**
-```
-Time 0:    Process starts indexing (status='indexing')
-Time 5m:   tree_sitter hangs in C code
-Time 15m:  Watchdog (separate process) checks timestamp
-           Detects hung process (>10 min)
-           Sets status='failed' with error message
-Time 15m+: Hung process CANNOT overwrite (safety check)
-           Database accessible to other processes
-           Can trigger new indexing
-```
+**Process isolation**: Indexing runs in a subprocess with resource limits:
+- Memory: 4GB virtual address space
+- CPU: 20 minutes timeout
+- Watchdog monitors for hung processes
 
-## Process Tree During Indexing
+### Hook System
 
-### Single-Threaded Execution
-```bash
-$ ps -ef | grep generate-repo-map
-501 12345     1  0 13:00 ??  0:05.23 python3 generate-repo-map.py
+Hooks integrate with Claude Code's lifecycle:
 
-$ ps -M -p 12345  # Show threads
-USER   PID  TT  %CPU STAT PRI     STIME     UTIME COMMAND
-501  12345 ??   1.2 S    31T   0:00.01   0:05.23 python3
-```
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `SessionStart` | Session begins | Load context, trigger indexing |
+| `Stop` | Session ends | Update narrative, capture learnings |
 
-**Only 1 thread** (MainThread) - No worker threads, no child processes.
+Hooks are autodiscovered from `hooks/hooks.json` - they don't need to be declared in `plugin.json`.
 
-### Memory Map (Loaded Libraries)
-```
-/usr/bin/python3                                    (interpreter)
-.venv/.../tree_sitter/_binding.cpython-313.so       (tree-sitter core)
-.venv/.../tree_sitter_cpp/_binding.abi3.so          (C++ grammar)
-.venv/.../tree_sitter_rust/_binding.abi3.so         (Rust grammar)
-/usr/lib/libsqlite3.dylib                           (SQLite)
-```
+### Narrative Documentation
 
-All loaded into **same address space** - no IPC, no subprocess spawning.
+The narrative system captures "tribal knowledge" - the stories, decisions, and insights that accumulate around codebases:
 
-## Implications for Testing
+- **`generate-narrative.py`** - Bootstrap narrative from git history and project structure
+- **`update-narrative.py`** - Revise narrative after development sessions
 
-### What We Tested:
+Output lives in `.claude/narrative.md` and provides context that survives across sessions.
 
-✅ **SIGSTOP to freeze entire process**
-- Simulates tree-sitter hanging in C code
-- Process becomes unresponsive
-- Watchdog can detect and mark as failed
-
-✅ **SIGCONT to resume frozen process**
-- Process continues after watchdog intervention
-- Safety check prevents overwriting database
-- Hung process cannot corrupt data
-
-✅ **Process completing after watchdog**
-- Most critical test
-- Proves safety check works
-- Database protected from race condition
-
-### What We Did NOT Need to Test:
-
-❌ Killing child processes (none exist)
-❌ IPC between processes (everything in-process)
-❌ Thread synchronization (single-threaded)
-❌ Subprocess cleanup (no subprocesses)
-
-## Architecture Evolution
-
-### v0.5.x: PreToolUse Hook (Deprecated)
+## Data Flow
 
 ```mermaid
-flowchart TB
-    subgraph Claude["🤖 Claude Code Process"]
-        Hook["PreToolUse hook"]
-        Hook --> Spawn["nohup generate-repo-map.py &"]
-    end
-    Spawn -.->|"⚠️ SUBPROCESS!"| Python
-    subgraph Python["🐍 python3 (PID: 12346)"]
-        TS["⚙️ tree_sitter (in-process)"]
-    end
+sequenceDiagram
+    participant CC as Claude Code
+    participant Hook as Hook Script
+    participant MCP as MCP Server
+    participant Idx as Indexer
+    participant DB as SQLite
 
-    classDef deprecated fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,color:black
-    class Claude,Python deprecated
+    Note over CC,DB: Session Start
+    CC->>Hook: SessionStart
+    Hook->>MCP: Check status
+    MCP->>DB: Read metadata
+    alt Needs indexing
+        MCP->>Idx: Spawn subprocess
+        Idx->>DB: Write symbols (WAL)
+    end
+    Hook-->>CC: Context loaded
+
+    Note over CC,DB: During Session
+    CC->>MCP: search_symbols("*Handler")
+    MCP->>DB: Query symbols table
+    DB-->>MCP: Results
+    MCP-->>CC: Formatted markdown
+
+    Note over CC,DB: Session End
+    CC->>Hook: Stop
+    Hook->>Hook: Update narrative
 ```
 
-**Problems:**
-- ❌ Multiple background processes accumulate
-- ❌ Memory leak: Each subprocess loads tree-sitter (~500MB)
+## Process Architecture
 
-### v0.6.0 - v0.7.x: Thread-Based Indexing (Deprecated)
+### Why Multiprocess?
 
-```mermaid
-flowchart TB
-    subgraph MCP["⚙️ MCP Server Process (repo-map-server.py)"]
-        Thread["Background thread calls do_index()"]
-        TS["⚙️ tree_sitter (in-process)"]
-        Thread --> TS
-    end
-
-    classDef deprecated fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,color:black
-    class MCP deprecated
-```
-
-**Trade-offs:**
-- ✅ Single persistent process
-- ✅ One tree-sitter instance
-- ❌ Hung tree-sitter freezes entire MCP server
-- ❌ Watchdog can detect but can't kill without killing MCP
-
-### v0.8.0+: Multiprocess Architecture (Current)
+Tree-sitter is a native C extension that runs in-process. If parsing hangs (e.g., malformed file triggers infinite loop), the entire Python process freezes. Our solution:
 
 ```mermaid
-flowchart TB
-    subgraph MCP["⚙️ MCP Server Process (repo-map-server.py)"]
-        Spawn["Spawns subprocess via do_index()"]
-        Track["tracks _indexing_process: Popen"]
-        Watchdog["🐕 watchdog can SIGKILL subprocess"]
-        Spawn --> Track
-        Track --> Watchdog
+flowchart LR
+    subgraph MCP["MCP Server (always responsive)"]
+        Handler["Tool handlers"]
+        Watch["Watchdog thread"]
     end
 
-    MCP -.->|"spawns"| Sub
-
-    subgraph Sub["🐍 Subprocess (PID: 12347)"]
-        Script["generate-repo-map.py"]
-        TS["⚙️ tree_sitter (in-process)"]
-        Script --> TS
+    subgraph Sub["Indexer Subprocess"]
+        TS["tree-sitter parsing"]
     end
 
-    DB[(💾 SQLite WAL)]
-    MCP <-->|"read"| DB
-    Sub -->|"write"| DB
+    MCP -->|"spawns"| Sub
+    Watch -->|"can SIGKILL"| Sub
+    Sub -->|"writes"| DB[(SQLite WAL)]
+    MCP <-->|"reads"| DB
 
-    classDef current fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
-    classDef subprocess fill:#87CEEB,stroke:#333,stroke-width:2px,color:darkblue
-    classDef db fill:#E6E6FA,stroke:#333,stroke-width:2px,color:darkblue
+    classDef server fill:#90EE90,stroke:#333,color:darkgreen
+    classDef sub fill:#87CEEB,stroke:#333,color:darkblue
 
-    class MCP current
-    class Sub subprocess
-    class DB db
+    class MCP server
+    class Sub sub
 ```
 
 **Benefits:**
-- ✅ Clean process isolation
-- ✅ MCP server always responsive
-- ✅ Watchdog can kill subprocess without affecting MCP
-- ✅ SQLite WAL handles concurrent read/write safely
+- MCP server stays responsive during indexing
+- Watchdog can kill hung indexer without affecting MCP
+- SQLite WAL handles concurrent read/write safely
 
-## Key Architectural Decisions
+### Watchdog
 
-1. **Tree-sitter is in-process** (native C extension)
-   - Consequence: Hung parser = hung entire indexing subprocess
-   - Mitigation: MCP server spawns subprocess, watchdog can SIGKILL it (v0.8.0+)
+The watchdog monitors indexing status:
+- Checks every 60 seconds
+- Detects indexing stuck >10 minutes
+- Sets `status='failed'` and can SIGKILL the subprocess
+- Safety check prevents hung process from overwriting database after intervention
 
-2. **Single-threaded parsing** (no ThreadPoolExecutor for tree-sitter)
-   - Consequence: Sequential parsing, slower
-   - Benefit: Simpler, no GIL contention, deterministic
-
-3. **WAL mode + single transaction** (v0.7.1)
-   - Consequence: Crash during parse = old data intact
-   - Benefit: No partial state, safe to kill process
-
-4. **Safety check before atomic rename** (v0.7.1)
-   - Consequence: Hung process can complete but can't overwrite
-   - Benefit: Watchdog decision is final
-
-5. **Multiprocess architecture** (v0.8.0+)
-   - Consequence: MCP server always responsive, even if indexing hangs
-   - Benefit: Watchdog can kill hung subprocess without affecting MCP server
-   - SQLite WAL: Handles concurrent read (MCP) and write (subprocess) safely
-
-## Testing Recommendations
-
-When testing hung processes:
-- Use **SIGSTOP** to freeze (simulates C code hang)
-- Use **SIGCONT** to resume (test safety check)
-- Use **SIGKILL** to terminate (test WAL recovery)
-- **Don't** look for child processes (none exist)
-- **Don't** try to kill tree-sitter separately (in-process)
-
-## Database Versioning (v0.9.4+)
-
-### Schema Version Tracking
-
-The SQLite database includes a version number in the metadata table:
-
-```python
-DB_VERSION = 1  # In generate-repo-map.py
-
-# Written to metadata table during indexing
-set_metadata(conn, 'db_version', str(DB_VERSION))
-```
-
-### Why Version the Database?
-
-**Problem:** Multiple Claude sessions using different plugin versions in the same project directory.
-
-**Without versioning:**
-- Version A creates schema with new columns
-- Version B (older) tries to read, gets errors
-- No way to detect schema mismatch
-
-**With versioning:**
-- Each version writes `db_version` to metadata
-- Tools can check version compatibility
-- Clear error messages about version mismatch
-- Can implement migration logic if needed
-
-### Current Schema (v1)
+## Database Schema
 
 ```sql
--- Symbols table
+-- Symbol definitions
 CREATE TABLE symbols (
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
-    kind TEXT NOT NULL,
+    kind TEXT NOT NULL,           -- 'function', 'class', 'method'
     signature TEXT,
     docstring TEXT,
     file_path TEXT NOT NULL,
     line_number INTEGER NOT NULL,
     end_line_number INTEGER,
-    parent TEXT
+    parent TEXT                   -- For methods: parent class name
 );
 
--- Full-text search
+-- Full-text search (partially implemented)
 CREATE VIRTUAL TABLE code_text_fts USING fts5(
-    name, signature, docstring, content='symbols'
+    file_path UNINDEXED,
+    line_number UNINDEXED,
+    element_type UNINDEXED,
+    symbol_name UNINDEXED,
+    content
 );
 
--- Metadata
+-- Indexing metadata
 CREATE TABLE metadata (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+-- Keys: status, db_version, last_indexed, symbol_count
 ```
 
-**Metadata keys:**
-- `status` - indexing status (idle/indexing/completed/failed)
-- `db_version` - schema version (1)
-- `last_indexed` - ISO timestamp
-- `symbol_count` - number of symbols indexed
+## Design Decisions
 
-### Future Schema Changes
+### Subprocess over threads
 
-When schema needs to change:
+**Problem**: Hung tree-sitter parsing would freeze the entire MCP server.
 
-1. **Bump DB_VERSION** in `generate-repo-map.py`
-2. **Add migration logic** in repo-map-server.py:
-   ```python
-   current_version = get_metadata(conn, 'db_version')
-   if current_version != DB_VERSION:
-       if current_version == '1' and DB_VERSION == 2:
-           # Run migration from v1 to v2
-           migrate_v1_to_v2(conn)
-       else:
-           # Trigger full reindex for major changes
-           trigger_reindex()
-   ```
-3. **Update CHANGELOG.md** with migration details
-4. **Test with both old and new schemas**
+**Solution**: Run indexing in a subprocess that can be killed independently.
 
-### Concurrent Version Handling
+### WAL mode + single transaction
 
-**Old approach (v0.9.0-v0.9.3):** Session start deleted old plugin versions
-- **Problem:** Broke other Claude sessions using old versions
-- **Result:** Removed cleanup code in v0.9.4
+**Problem**: Crash during indexing could leave database in partial state.
 
-**Current approach (v0.9.4+):** Allow multiple versions to coexist
-- Different versions can run in different project directories
-- Same project directory: last indexing determines schema
-- Users update all sessions when ready
-- Database version enables detection of mismatches
+**Solution**: All writes in a single transaction; crash = rollback to clean state.
 
-## Summary
+### Markdown over JSON
 
-Tree-sitter process "tree":
+**Problem**: JSON responses consume context tokens inefficiently.
 
-```mermaid
-flowchart TB
-    Script["🐍 generate-repo-map.py"]
-    Script --- NoChild["❌ (no child processes)"]
-    Script --- NoThread["❌ (no threads)"]
-    Script --- Native["⚙️ (just native C library loaded in-process)"]
+**Solution**: MCP tools return formatted markdown that's human-readable and compact.
 
-    classDef main fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
-    classDef note fill:#F0F0F0,stroke:#666,stroke-width:1px,color:#333
+### Hooks autodiscovery
 
-    class Script main
-    class NoChild,NoThread,Native note
-```
+**Problem**: Declaring hooks in both `plugin.json` and `hooks/hooks.json` caused validation errors.
 
-It's a **flat single-process architecture**, not a process tree.
+**Solution**: Hooks are autodiscovered from `hooks/hooks.json` only. Don't declare them in `plugin.json`.
+
+### Narrative documentation
+
+**Problem**: Traditional docs capture what code does, not why or what was learned building it.
+
+**Solution**: Generate and evolve "tribal knowledge" narratives that capture project stories, gotchas, and evolving understanding.

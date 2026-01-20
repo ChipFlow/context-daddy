@@ -6,9 +6,10 @@ Internal documentation for context-daddy development.
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](architecture.md) | Process architecture, multiprocess design, watchdog |
+| [Architecture](architecture.md) | System architecture, components, data flow |
 | [Testing](testing.md) | Test suite, CI workflows, guarantees |
-| [Development](development.md) | Roadmap, design decisions, history |
+| [Development](development.md) | Planned features, design decisions, history |
+| [The Story So Far](story.md) | Project narrative, lessons learned, dragons |
 
 ## Quick Links
 

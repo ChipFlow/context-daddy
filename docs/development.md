@@ -44,10 +44,20 @@ CREATE TABLE comments (
 
 ### Full-Text Search (FTS)
 
-**Status**: Planned
+**Status**: Partially Implemented
 
-Enable fast, relevance-ranked searches across comments, docstrings, and string literals.
+The FTS5 table schema exists but is not yet populated or exposed via MCP tools.
 
+**What's done:**
+- FTS5 virtual table created in schema (`code_text_fts`)
+- Table structure supports comments, docstrings, and string literals
+
+**What's remaining:**
+- Populate FTS table during indexing (extract strings/comments from tree-sitter AST)
+- Add `search_text()` MCP tool
+- Wire up to existing indexing pipeline
+
+**Schema (already in place):**
 ```sql
 CREATE VIRTUAL TABLE code_text_fts USING fts5(
     file_path UNINDEXED,
@@ -59,16 +69,7 @@ CREATE VIRTUAL TABLE code_text_fts USING fts5(
 );
 ```
 
-**Search tool:**
-```python
-search_text(
-    query="connection pool",
-    element_type="docstring",  # or 'comment', 'string_literal', 'all'
-    limit=20
-)
-```
-
-**Performance**: FTS5 queries <50ms vs grep 100-500ms (10-20x faster).
+**Expected performance**: FTS5 queries <50ms vs grep 100-500ms (10-20x faster).
 
 ### Other Ideas
 
