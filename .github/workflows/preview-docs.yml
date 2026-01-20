@@ -4,7 +4,9 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, closed]
 
-concurrency: preview-${{ github.ref }}
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: write
