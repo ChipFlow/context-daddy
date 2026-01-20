@@ -1,12 +1,13 @@
 {
   "name": "context-daddy",
-  "version": "0.10.5",
+  "version": "0.10.6",
   "description": "Your codebase's context needs a responsible adult. Fast code exploration, living project narratives, and tribal knowledge that survives across sessions.",
   "author": {
     "name": "Robert Taylor"
   },
   "keywords": ["context", "narrative", "repo-map", "tribal-knowledge", "documentation"],
   "repository": "https://github.com/chipflow/context-daddy",
+  "hooks": "${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json",
   "mcpServers": {
     "repo-map": {
       "command": "uv",
