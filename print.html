@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-989e942c.js";
+            window.path_to_searchindex_js = "searchindex-aae3e6d5.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-88e4d90f.js"></script>
+        <script src="toc-d635f22e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -187,10 +187,10 @@
 <tr><th>Document</th><th>Description</th></tr>
 </thead>
 <tbody>
+<tr><td><a href="#the-story-so-far">The Story So Far</a></td><td>Project narrative, lessons learned, dragons</td></tr>
 <tr><td><a href="#architecture">Architecture</a></td><td>System architecture, components, data flow</td></tr>
 <tr><td><a href="#testing">Testing</a></td><td>Test suite, CI workflows, guarantees</td></tr>
 <tr><td><a href="#development">Development</a></td><td>Planned features, design decisions, history</td></tr>
-<tr><td><a href="#the-story-so-far">The Story So Far</a></td><td>Project narrative, lessons learned, dragons</td></tr>
 </tbody>
 </table>
 </div>
@@ -200,6 +200,74 @@
 <li><a href="https://github.com/ChipFlow/context-daddy/blob/main/CHANGELOG.md">Changelog</a></li>
 <li><a href="https://github.com/ChipFlow/context-daddy/blob/main/SKILL.md">Plugin Skills</a></li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="the-story-so-far"><a class="header" href="#the-story-so-far">The Story So Far</a></h1>
+<p>This page captures the evolving narrative of context-daddy - not just what it does, but why it exists and what we’ve learned building it.</p>
+<h2 id="the-vision"><a class="header" href="#the-vision">The Vision</a></h2>
+<p>We started with a simple observation: Claude struggles with large codebases. It either drowns in context trying to understand everything at once, or makes blind guesses without sufficient understanding. There had to be a better way.</p>
+<p>The solution: give Claude a structured way to explore code semantically. Instead of reading files randomly, it could query for symbols by name, understand the codebase structure through maps, and dive into specific implementations only when needed.</p>
+<h2 id="evolution"><a class="header" href="#evolution">Evolution</a></h2>
+<h3 id="v01-v03-the-naive-approach"><a class="header" href="#v01-v03-the-naive-approach">v0.1-v0.3: The Naive Approach</a></h3>
+<p>Our first attempt was straightforward - use tree-sitter to parse code and generate repository maps. It worked fine for small projects but failed catastrophically on anything substantial. Memory would explode as we tried to parse everything simultaneously.</p>
+<p><strong>Lesson learned</strong>: You can’t just load an entire codebase into memory. Even with tree-sitter’s efficiency, large repos require incremental processing.</p>
+<h3 id="v04-v05-mcp-server-architecture"><a class="header" href="#v04-v05-mcp-server-architecture">v0.4-v0.5: MCP Server Architecture</a></h3>
+<p>Static repository maps weren’t enough. Claude needed fast, targeted access to specific symbols. This led us to build an MCP server - a live query interface for code exploration rather than just generated static files.</p>
+<p><strong>Lesson learned</strong>: The real value isn’t in the map itself, but in the ability to query it dynamically.</p>
+<h3 id="v06-v08-process-management-nightmares"><a class="header" href="#v06-v08-process-management-nightmares">v0.6-v0.8: Process Management Nightmares</a></h3>
+<p>This era was dominated by resource management issues:</p>
+<ul>
+<li>Indexing processes hanging after Claude sessions ended</li>
+<li>Memory leaks from multiple tree-sitter instances</li>
+<li>Lock file conflicts between concurrent sessions</li>
+</ul>
+<p>We went through multiple iterations:</p>
+<ol>
+<li><strong>PreToolUse hooks</strong> - Spawned too many background processes</li>
+<li><strong>Thread-based indexing</strong> - Hung tree-sitter froze entire MCP server</li>
+<li><strong>Multiprocess architecture</strong> - Finally isolated indexing properly</li>
+</ol>
+<p><strong>Lesson learned</strong>: Process isolation is worth the complexity. A hung parser shouldn’t take down the whole system.</p>
+<h3 id="v09-database-versioning"><a class="header" href="#v09-database-versioning">v0.9: Database Versioning</a></h3>
+<p>As the schema evolved, users hit compatibility issues between plugin versions. We added database versioning and learned that multiple Claude sessions can coexist with different plugin versions - we just need to handle schema mismatches gracefully.</p>
+<p><strong>Lesson learned</strong>: Schema versioning isn’t optional. Plan for it from the start.</p>
+<h3 id="v010-documentation--narrative"><a class="header" href="#v010-documentation--narrative">v0.10: Documentation &amp; Narrative</a></h3>
+<p>A philosophical shift: understanding codebases isn’t just about parsing syntax. It’s about capturing the stories, decisions, and hard-won insights that accumulate around projects.</p>
+<p>Traditional documentation captures <em>what</em> code does. Narratives capture <em>why</em> it exists and what we’ve learned building it.</p>
+<p><strong>Lesson learned</strong>: Tribal knowledge is valuable and worth preserving systematically.</p>
+<h2 id="dragons--gotchas"><a class="header" href="#dragons--gotchas">Dragons &amp; Gotchas</a></h2>
+<p>Hard-won lessons that aren’t obvious from reading the code:</p>
+<h3 id="hooks-autodiscovery"><a class="header" href="#hooks-autodiscovery">Hooks Autodiscovery</a></h3>
+<p>The hooks system is more fragile than it appears. Declaring hooks in both <code>plugin.json</code> and <code>hooks/hooks.json</code> causes validation failures. The fix: only use <code>hooks/hooks.json</code> - Claude Code autodiscovers them.</p>
+<h3 id="tree-sitter-memory"><a class="header" href="#tree-sitter-memory">Tree-sitter Memory</a></h3>
+<p>Tree-sitter memory usage is unpredictable and can spike dramatically with certain file types or parsing errors. Our subprocess isolation helps, but resource limits are essential.</p>
+<h3 id="sqlite-concurrency"><a class="header" href="#sqlite-concurrency">SQLite Concurrency</a></h3>
+<p>WAL mode saves us from many concurrency issues, but database migrations still require care. We moved away from process locks (which caused deadlocks) to graceful cleanup based on process detection.</p>
+<h3 id="mcp-server-lifecycle"><a class="header" href="#mcp-server-lifecycle">MCP Server Lifecycle</a></h3>
+<p>The MCP server lifecycle is tightly coupled to Claude Code’s session management in ways that aren’t well-documented. We’ve reverse-engineered expected behaviors through trial and error - particularly around when servers start, stop, and restart.</p>
+<h2 id="open-questions"><a class="header" href="#open-questions">Open Questions</a></h2>
+<p>Things we’re still figuring out:</p>
+<ul>
+<li>
+<p><strong>Cache invalidation</strong>: The current mtime+hash approach works but feels heavyweight. Filesystem watching or git hooks might be more elegant.</p>
+</li>
+<li>
+<p><strong>Narrative maintenance</strong>: How do we keep tribal knowledge current without it becoming a maintenance burden? When should narratives be version-controlled?</p>
+</li>
+<li>
+<p><strong>FTS utilization</strong>: The full-text search infrastructure exists but we haven’t found the right UX patterns to make it genuinely useful in Claude’s workflow.</p>
+</li>
+<li>
+<p><strong>Validation</strong>: How do we measure whether narratives are actually useful? Technical metrics like indexing speed are easy; the value of tribal knowledge is harder to quantify.</p>
+</li>
+</ul>
+<h2 id="philosophy"><a class="header" href="#philosophy">Philosophy</a></h2>
+<p>A few principles that have emerged:</p>
+<ol>
+<li><strong>Structure before detail</strong> - Help Claude understand the map before exploring the territory</li>
+<li><strong>Fail gracefully</strong> - A hung process shouldn’t corrupt data or block the session</li>
+<li><strong>Context is precious</strong> - Return markdown, not JSON; be concise, not comprehensive</li>
+<li><strong>Stories matter</strong> - The “why” is often more valuable than the “what”</li>
+</ol>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
@@ -395,7 +463,7 @@ CREATE TABLE metadata (
 <h3 id="markdown-over-json"><a class="header" href="#markdown-over-json">Markdown over JSON</a></h3>
 <p><strong>Problem</strong>: JSON responses consume context tokens inefficiently.</p>
 <p><strong>Solution</strong>: MCP tools return formatted markdown that’s human-readable and compact.</p>
-<h3 id="hooks-autodiscovery"><a class="header" href="#hooks-autodiscovery">Hooks autodiscovery</a></h3>
+<h3 id="hooks-autodiscovery-1"><a class="header" href="#hooks-autodiscovery-1">Hooks autodiscovery</a></h3>
 <p><strong>Problem</strong>: Declaring hooks in both <code>plugin.json</code> and <code>hooks/hooks.json</code> caused validation errors.</p>
 <p><strong>Solution</strong>: Hooks are autodiscovered from <code>hooks/hooks.json</code> only. Don’t declare them in <code>plugin.json</code>.</p>
 <h3 id="narrative-documentation-1"><a class="header" href="#narrative-documentation-1">Narrative documentation</a></h3>
@@ -589,74 +657,6 @@ CREATE TABLE comments (
 <li>Sets <code>status='failed'</code> with error message</li>
 <li>Safety check prevents hung process from overwriting after watchdog intervention</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="the-story-so-far"><a class="header" href="#the-story-so-far">The Story So Far</a></h1>
-<p>This page captures the evolving narrative of context-daddy - not just what it does, but why it exists and what we’ve learned building it.</p>
-<h2 id="the-vision"><a class="header" href="#the-vision">The Vision</a></h2>
-<p>We started with a simple observation: Claude struggles with large codebases. It either drowns in context trying to understand everything at once, or makes blind guesses without sufficient understanding. There had to be a better way.</p>
-<p>The solution: give Claude a structured way to explore code semantically. Instead of reading files randomly, it could query for symbols by name, understand the codebase structure through maps, and dive into specific implementations only when needed.</p>
-<h2 id="evolution"><a class="header" href="#evolution">Evolution</a></h2>
-<h3 id="v01-v03-the-naive-approach"><a class="header" href="#v01-v03-the-naive-approach">v0.1-v0.3: The Naive Approach</a></h3>
-<p>Our first attempt was straightforward - use tree-sitter to parse code and generate repository maps. It worked fine for small projects but failed catastrophically on anything substantial. Memory would explode as we tried to parse everything simultaneously.</p>
-<p><strong>Lesson learned</strong>: You can’t just load an entire codebase into memory. Even with tree-sitter’s efficiency, large repos require incremental processing.</p>
-<h3 id="v04-v05-mcp-server-architecture"><a class="header" href="#v04-v05-mcp-server-architecture">v0.4-v0.5: MCP Server Architecture</a></h3>
-<p>Static repository maps weren’t enough. Claude needed fast, targeted access to specific symbols. This led us to build an MCP server - a live query interface for code exploration rather than just generated static files.</p>
-<p><strong>Lesson learned</strong>: The real value isn’t in the map itself, but in the ability to query it dynamically.</p>
-<h3 id="v06-v08-process-management-nightmares"><a class="header" href="#v06-v08-process-management-nightmares">v0.6-v0.8: Process Management Nightmares</a></h3>
-<p>This era was dominated by resource management issues:</p>
-<ul>
-<li>Indexing processes hanging after Claude sessions ended</li>
-<li>Memory leaks from multiple tree-sitter instances</li>
-<li>Lock file conflicts between concurrent sessions</li>
-</ul>
-<p>We went through multiple iterations:</p>
-<ol>
-<li><strong>PreToolUse hooks</strong> - Spawned too many background processes</li>
-<li><strong>Thread-based indexing</strong> - Hung tree-sitter froze entire MCP server</li>
-<li><strong>Multiprocess architecture</strong> - Finally isolated indexing properly</li>
-</ol>
-<p><strong>Lesson learned</strong>: Process isolation is worth the complexity. A hung parser shouldn’t take down the whole system.</p>
-<h3 id="v09-database-versioning"><a class="header" href="#v09-database-versioning">v0.9: Database Versioning</a></h3>
-<p>As the schema evolved, users hit compatibility issues between plugin versions. We added database versioning and learned that multiple Claude sessions can coexist with different plugin versions - we just need to handle schema mismatches gracefully.</p>
-<p><strong>Lesson learned</strong>: Schema versioning isn’t optional. Plan for it from the start.</p>
-<h3 id="v010-documentation--narrative"><a class="header" href="#v010-documentation--narrative">v0.10: Documentation &amp; Narrative</a></h3>
-<p>A philosophical shift: understanding codebases isn’t just about parsing syntax. It’s about capturing the stories, decisions, and hard-won insights that accumulate around projects.</p>
-<p>Traditional documentation captures <em>what</em> code does. Narratives capture <em>why</em> it exists and what we’ve learned building it.</p>
-<p><strong>Lesson learned</strong>: Tribal knowledge is valuable and worth preserving systematically.</p>
-<h2 id="dragons--gotchas"><a class="header" href="#dragons--gotchas">Dragons &amp; Gotchas</a></h2>
-<p>Hard-won lessons that aren’t obvious from reading the code:</p>
-<h3 id="hooks-autodiscovery-1"><a class="header" href="#hooks-autodiscovery-1">Hooks Autodiscovery</a></h3>
-<p>The hooks system is more fragile than it appears. Declaring hooks in both <code>plugin.json</code> and <code>hooks/hooks.json</code> causes validation failures. The fix: only use <code>hooks/hooks.json</code> - Claude Code autodiscovers them.</p>
-<h3 id="tree-sitter-memory"><a class="header" href="#tree-sitter-memory">Tree-sitter Memory</a></h3>
-<p>Tree-sitter memory usage is unpredictable and can spike dramatically with certain file types or parsing errors. Our subprocess isolation helps, but resource limits are essential.</p>
-<h3 id="sqlite-concurrency"><a class="header" href="#sqlite-concurrency">SQLite Concurrency</a></h3>
-<p>WAL mode saves us from many concurrency issues, but database migrations still require care. We moved away from process locks (which caused deadlocks) to graceful cleanup based on process detection.</p>
-<h3 id="mcp-server-lifecycle"><a class="header" href="#mcp-server-lifecycle">MCP Server Lifecycle</a></h3>
-<p>The MCP server lifecycle is tightly coupled to Claude Code’s session management in ways that aren’t well-documented. We’ve reverse-engineered expected behaviors through trial and error - particularly around when servers start, stop, and restart.</p>
-<h2 id="open-questions"><a class="header" href="#open-questions">Open Questions</a></h2>
-<p>Things we’re still figuring out:</p>
-<ul>
-<li>
-<p><strong>Cache invalidation</strong>: The current mtime+hash approach works but feels heavyweight. Filesystem watching or git hooks might be more elegant.</p>
-</li>
-<li>
-<p><strong>Narrative maintenance</strong>: How do we keep tribal knowledge current without it becoming a maintenance burden? When should narratives be version-controlled?</p>
-</li>
-<li>
-<p><strong>FTS utilization</strong>: The full-text search infrastructure exists but we haven’t found the right UX patterns to make it genuinely useful in Claude’s workflow.</p>
-</li>
-<li>
-<p><strong>Validation</strong>: How do we measure whether narratives are actually useful? Technical metrics like indexing speed are easy; the value of tribal knowledge is harder to quantify.</p>
-</li>
-</ul>
-<h2 id="philosophy"><a class="header" href="#philosophy">Philosophy</a></h2>
-<p>A few principles that have emerged:</p>
-<ol>
-<li><strong>Structure before detail</strong> - Help Claude understand the map before exploring the territory</li>
-<li><strong>Fail gracefully</strong> - A hung process shouldn’t corrupt data or block the session</li>
-<li><strong>Context is precious</strong> - Return markdown, not JSON; be concise, not comprehensive</li>
-<li><strong>Stories matter</strong> - The “why” is often more valuable than the “what”</li>
-</ol>
 
                     </main>
 
