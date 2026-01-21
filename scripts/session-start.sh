@@ -12,6 +12,9 @@ CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 # Ensure .claude directory exists
 mkdir -p "${CLAUDE_DIR}"
 
+# Clear session-ended marker (normal session start, not post-plan resume)
+rm -f "${CLAUDE_DIR}/session-ended"
+
 # Generate project manifest (quick, runs synchronously)
 uv run "${SCRIPT_DIR}/scan.py" "${PROJECT_ROOT}" >/dev/null 2>&1 || true
 

@@ -113,6 +113,10 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/log-hook.sh UserPromptSubmit"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-prompt.sh"
           }
         ]
       }
