@@ -2,7 +2,19 @@
 
 Update the project's living narrative based on what we learned this session.
 
-## Step 1: Check Narrative Exists
+## Quick Option: Automated Update
+
+If `ANTHROPIC_API_KEY` is set, you can use the automated script:
+
+```bash
+uv run scripts/update-narrative.py "Brief summary of what we worked on, learned, and discovered"
+```
+
+The script will use Claude to intelligently revise the narrative.
+
+## Manual Option: Step-by-Step
+
+### Step 1: Check Narrative Exists
 
 Read `.claude/narrative.md`. If it doesn't exist, run `/context-daddy:story` first.
 

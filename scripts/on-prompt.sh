@@ -4,10 +4,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PWD}"
 CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 MARKER_FILE="${CLAUDE_DIR}/session-ended"
-CONTEXT_FILE="${CLAUDE_DIR}/post-plan-context.md"
 
 # Check if this is a post-plan prompt (marker exists)
 if [[ -f "${MARKER_FILE}" ]]; then
@@ -15,49 +15,73 @@ if [[ -f "${MARKER_FILE}" ]]; then
     rm -f "${MARKER_FILE}"
 
     # Log for debugging
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     if [[ -x "${SCRIPT_DIR}/log-hook.sh" ]]; then
         "${SCRIPT_DIR}/log-hook.sh" "PostPlanContextInjection" "triggered" 2>/dev/null || true
     fi
 
-    # Build context to inject
-    CONTEXT=""
+    # Extract key context using helper script (same as Stop hook)
+    CONTEXT_DATA=$(uv run "${SCRIPT_DIR}/extract-context.py" "${PROJECT_ROOT}" 2>/dev/null || echo "{}")
 
-    # Include post-plan context file if it exists
-    if [[ -f "${CONTEXT_FILE}" ]]; then
-        CONTEXT=$(cat "${CONTEXT_FILE}")
+    # Build context refresh message (similar to stop-reorient.sh)
+    CONTEXT="🔄 **Context Refresh After Compaction**"
+
+    # Add project structure
+    DIR_TREE=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('dir_tree', ''))" 2>/dev/null || true)
+    if [[ -n "${DIR_TREE}" ]]; then
+        CONTEXT="${CONTEXT}
+
+**Project Structure**:
+\`\`\`
+${DIR_TREE}
+\`\`\`"
     fi
 
-    # Include narrative if it exists
-    NARRATIVE_FILE="${CLAUDE_DIR}/narrative.md"
-    if [[ -f "${NARRATIVE_FILE}" ]]; then
-        if [[ -n "${CONTEXT}" ]]; then
-            CONTEXT="${CONTEXT}"$'\n\n---\n\n'
+    # Inject narrative sections
+    HAS_NARRATIVE=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('has_narrative', False))" 2>/dev/null || echo "False")
+
+    if [[ "${HAS_NARRATIVE}" == "True" ]]; then
+        NARRATIVE_SUMMARY=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('narrative_summary', ''))" 2>/dev/null || true)
+        NARRATIVE_FOCI=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('narrative_foci', ''))" 2>/dev/null || true)
+        NARRATIVE_DRAGONS=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('narrative_dragons', ''))" 2>/dev/null || true)
+
+        if [[ -n "${NARRATIVE_SUMMARY}" ]]; then
+            CONTEXT="${CONTEXT}
+
+📖 **Project Summary**: ${NARRATIVE_SUMMARY}"
         fi
-        CONTEXT="${CONTEXT}$(cat "${NARRATIVE_FILE}")"
-    fi
+        if [[ -n "${NARRATIVE_FOCI}" ]]; then
+            CONTEXT="${CONTEXT}
 
-    # Include CLAUDE.md if it exists
-    CLAUDE_MD="${PROJECT_ROOT}/CLAUDE.md"
-    if [[ -f "${CLAUDE_MD}" ]]; then
-        if [[ -n "${CONTEXT}" ]]; then
-            CONTEXT="${CONTEXT}"$'\n\n---\n\n'
+🎯 **Current Foci**:
+${NARRATIVE_FOCI}"
         fi
-        CONTEXT="${CONTEXT}$(cat "${CLAUDE_MD}")"
+        if [[ -n "${NARRATIVE_DRAGONS}" ]]; then
+            CONTEXT="${CONTEXT}
+
+🐉 **Dragons & Gotchas**:
+${NARRATIVE_DRAGONS}"
+        fi
     fi
 
-    if [[ -n "${CONTEXT}" ]]; then
-        # Output JSON with context to inject
-        # Using python to safely JSON-encode the context
-        python3 -c "
+    # Add action instructions
+    CONTEXT="${CONTEXT}
+
+---
+**Actions Required:**
+
+1. **Read ${CLAUDE_DIR}/CLAUDE.md** (if exists) - Project rules
+2. **Read ${CLAUDE_DIR}/learnings.md** (if exists) - Recent discoveries
+3. **Update narrative** (if significant learning): Run \`/context-daddy:refresh\`
+
+Then continue with the current task."
+
+    # Output JSON with context to inject
+    python3 -c "
 import json
 import sys
 context = sys.stdin.read()
 print(json.dumps({'context': context}))
 " <<< "${CONTEXT}"
-    else
-        echo '{"continue": true}'
-    fi
 else
     # Normal prompt, no injection needed
     echo '{"continue": true}'
