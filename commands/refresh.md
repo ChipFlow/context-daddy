@@ -2,66 +2,72 @@
 
 Update the project's living narrative based on what we learned this session.
 
-## Quick Option: Automated Update
+## IMPORTANT: This is an executable skill
 
-If `ANTHROPIC_API_KEY` is set, you can use the automated script:
+When invoked, you MUST execute the update process below. Don't just explain it - DO it.
 
+## Step 1: Check Prerequisites
+
+First, verify the narrative exists:
 ```bash
-uv run scripts/update-narrative.py "Brief summary of what we worked on, learned, and discovered"
+ls -la .claude/narrative.md
 ```
 
-The script will use Claude to intelligently revise the narrative.
-
-## Manual Option: Step-by-Step
-
-### Step 1: Check Narrative Exists
-
-Read `.claude/narrative.md`. If it doesn't exist, run `/context-daddy:story` first.
+If the file doesn't exist, tell the user to run `/context-daddy:story` first and stop.
 
 ## Step 2: Get Session Summary
 
-Ask the user (or recall from the session) what we worked on:
-- Main focus/task of this session
-- Key decisions or approaches
-- New understanding or gotchas discovered
-- Any focus shifts
+If the user provided a summary with the command (e.g., `/context-daddy:refresh "we fixed the auth bug"`), use that.
 
-## Step 3: Update the Narrative
+Otherwise, ask the user:
+> What did we work on this session? (Key tasks, decisions, discoveries, or gotchas)
 
-Read the current narrative, then write an updated version to `.claude/narrative.md`.
+Wait for their response before proceeding.
 
-**CRITICAL RULES:**
-1. **REVISE existing sections** - don't just append new text at the end
-2. **Keep the SAME structure** (Summary, Current Foci, How It Works, The Story So Far, Dragons & Gotchas, Open Questions)
-3. **Maintain "we" voice** throughout
-4. **Be concise** - integrate information, don't bloat
+## Step 3: Run the Update Script
 
-**Section-specific guidance:**
-- **Current Foci**: Update if focus shifted. Remove completed foci, add new ones.
-- **The Story So Far**: Only add if we completed a significant epoch. Don't add minor updates.
-- **Dragons & Gotchas**: Add new discoveries. Remove if we fixed a dragon.
-- **Open Questions**: Remove answered questions, add new ones.
-- **How It Works**: Update if architecture/structure changed significantly.
-- **Summary**: Rarely needs updating unless project's core purpose evolved.
+Execute the update script with the user's summary:
 
-**LENGTH LIMITS** (sections are auto-truncated when injected):
-- **Summary**: ~2-3 sentences, under 300 chars
-- **Current Foci**: 2-4 bullets, under 400 chars
-- **Dragons**: Key warnings, under 300 chars
+```bash
+uv run ${CLAUDE_PLUGIN_ROOT}/scripts/update-narrative.py "<USER_SUMMARY_HERE>"
+```
 
-If the session didn't change much about our understanding, the narrative can stay mostly the same.
-The goal is a **living document** that reflects current understanding, not a log of everything.
+Replace `<USER_SUMMARY_HERE>` with the actual summary from Step 2.
 
-## When to Update
+**If the script fails** (e.g., missing ANTHROPIC_API_KEY), fall back to manual update in Step 4.
 
-**Update when:**
-- Completed significant work
-- Discovered something non-obvious
-- Understanding of the project shifted
-- Hit a "dragon" that future-us should know about
-- Answered a long-standing question
+## Step 4: Manual Fallback (only if script fails)
 
-**Skip if:**
-- Session was just exploration/reading
-- Changes were trivial (typos, minor tweaks)
-- Nothing changed about understanding
+If the automated script isn't available, do a manual update:
+
+1. Read `.claude/narrative.md`
+2. Revise it based on the session summary
+3. Write the updated content back
+
+**CRITICAL RULES for manual update:**
+- **REVISE existing sections** - don't append to end
+- **Keep the SAME structure** (Summary, Current Foci, How It Works, The Story So Far, Dragons & Gotchas, Open Questions)
+- **Maintain "we" voice** throughout
+- **Be concise** - integrate, don't bloat
+
+**Section guidance:**
+- **Current Foci**: Update if focus shifted. Remove completed, add new.
+- **The Story So Far**: Only add for significant epochs.
+- **Dragons & Gotchas**: Add discoveries, remove fixed ones.
+- **Open Questions**: Remove answered, add new.
+
+**LENGTH LIMITS** (auto-truncated when injected):
+- Summary: ~2-3 sentences, under 300 chars
+- Current Foci: 2-4 bullets, under 400 chars
+- Dragons: Key warnings, under 300 chars
+
+## Step 5: Confirm Success
+
+After the update completes, tell the user:
+- Narrative has been updated
+- Brief summary of what changed (if visible from script output)
+
+## When to Skip
+
+If the session was just exploration/reading with no significant learnings, it's OK to skip the update. Tell the user:
+> "Nothing significant to update - narrative is still current."

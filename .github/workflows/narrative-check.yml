@@ -1,0 +1,62 @@
+name: Narrative Freshness Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-narrative:
+    name: Check Narrative Freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for commit counting
+
+      - name: Check narrative freshness
+        run: |
+          NARRATIVE=".claude/narrative.md"
+          MAX_COMMITS="${NARRATIVE_STALE_THRESHOLD:-10}"  # Configurable threshold
+
+          if [ ! -f "$NARRATIVE" ]; then
+            echo "::notice::No narrative.md found - run /context-daddy:story to create one"
+            exit 0
+          fi
+
+          # Get last commit that modified the narrative
+          LAST_COMMIT=$(git log -1 --format="%H" -- "$NARRATIVE" 2>/dev/null || echo "")
+
+          if [ -z "$LAST_COMMIT" ]; then
+            echo "::notice::narrative.md not tracked in git history"
+            exit 0
+          fi
+
+          # Get the date of that commit
+          MTIME=$(git log -1 --format="%aI" -- "$NARRATIVE")
+
+          # Count commits since narrative was updated (excluding the narrative update itself)
+          COMMITS_SINCE=$(git rev-list --count "$LAST_COMMIT"..HEAD 2>/dev/null || echo "0")
+
+          echo "Narrative last updated: $MTIME"
+          echo "Commits since then: $COMMITS_SINCE"
+          echo "Threshold: $MAX_COMMITS"
+
+          if [ "$COMMITS_SINCE" -gt "$MAX_COMMITS" ]; then
+            echo ""
+            echo "::warning title=Narrative may be stale::$COMMITS_SINCE commits since last narrative update (threshold: $MAX_COMMITS)"
+            echo ""
+            echo "Consider updating the narrative with:"
+            echo "  /context-daddy:refresh \"summary of recent work\""
+            echo ""
+            echo "Or run directly:"
+            echo "  uv run scripts/update-narrative.py \"summary of recent work\""
+
+            # Don't fail the build, just warn
+            # To make this strict, uncomment the next line:
+            # exit 1
+          else
+            echo ""
+            echo "Narrative is fresh (updated within last $MAX_COMMITS commits)"
+          fi
