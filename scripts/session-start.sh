@@ -149,7 +149,10 @@ elif [[ -f "${DB_FILE}" ]]; then
     CONTEXT="${CONTEXT}\n• What's in a file? → get_file_symbols(\"path/to/file.rs\")"
     CONTEXT="${CONTEXT}\n• Finding files? → list_files(\"*.py\") or list_files(\"*ring*\") - faster than Search/find/ls"
     CONTEXT="${CONTEXT}\n• 10-100x faster than Search/Grep/find/ls. Use MCP tools for code, grep only for text/comments."
-    CONTEXT="${CONTEXT}\n• /context-daddy:mcp-help for detailed examples showing MCP vs Search tool usage."
+    CONTEXT="${CONTEXT}\n\n📄 **Large markdown files?** Use md_* tools instead of Read:"
+    CONTEXT="${CONTEXT}\n• md_outline(\"docs/API.md\") - Get table of contents"
+    CONTEXT="${CONTEXT}\n• md_get_section(\"docs/API.md\", \"Installation\") - Read specific section"
+    CONTEXT="${CONTEXT}\n• md_list_tables/md_get_table - Navigate tables"
 elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
 fi
