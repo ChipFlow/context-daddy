@@ -1,3 +1,8 @@
+---
+context: fork
+allowed-tools: [Bash, Read, Write]
+---
+
 # Generate README from Narrative
 
 Generate or update the project README based on the narrative document.

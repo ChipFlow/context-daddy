@@ -1,3 +1,8 @@
+---
+context: fork
+allowed-tools: [Bash, Read, Write]
+---
+
 # Update Project Narrative
 
 Update the project's living narrative based on git history and session learnings.
@@ -89,6 +94,8 @@ If the automated script isn't available:
 - Summary: ~2-3 sentences, under 300 chars
 - Current Foci: 2-4 bullets, under 400 chars
 - Dragons: Key warnings, under 300 chars
+
+**Footer:** Update the `_Generated:` line at the bottom with current date and session ID (from `$CLAUDE_SESSION_ID` env var or "unknown").
 
 ## Step 5: Confirm Success
 

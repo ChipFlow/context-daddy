@@ -1,3 +1,8 @@
+---
+context: fork
+allowed-tools: [Bash, Read, Write]
+---
+
 # Generate Project Narrative
 
 Generate a living narrative document for this codebase from git history.
@@ -44,6 +49,9 @@ Then generate a narrative document with EXACTLY this structure and write it to `
 
 ## Open Questions
 <!-- Things we're still figuring out. Uncertainties. Technical debt we're aware of. -->
+
+---
+_Generated: [DATE] | Session: [SESSION_ID from narrative-data.json]_
 ```
 
 **Critical rules for generation:**

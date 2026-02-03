@@ -84,6 +84,17 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Grep|Search|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/nudge-mcp.sh"
+          }
+        ]
+      }
+    ],
     "SubagentStart": [
       {
         "matcher": "*",
@@ -91,6 +102,10 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/log-hook.sh SubagentStart"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-context.sh"
           }
         ]
       }

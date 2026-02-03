@@ -202,11 +202,13 @@ def get_recent_activity(cwd: Path, days: int = 30) -> dict:
 
 def extract_git_data(project_root: Path) -> dict:
     """Extract all relevant git data for narrative generation."""
+    import os
     print("Extracting git history...", file=sys.stderr)
 
     data = {
         "project_name": project_root.name,
         "extracted_at": datetime.now().isoformat(),
+        "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
         "commits": get_commit_history(project_root, limit=200),
         "major_changes": get_major_changes(project_root, limit=30),
         "structure": get_directory_structure(project_root),

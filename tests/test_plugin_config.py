@@ -21,7 +21,7 @@ SERVERS_ROOT = PROJECT_ROOT / "servers"
 
 # Note: hooks are autodiscovered from hooks/hooks.json, NOT in plugin.json
 REQUIRED_PLUGIN_FIELDS = ["name", "version", "description", "author", "keywords", "repository"]
-VALID_HOOK_TYPES = ["SessionStart", "SessionEnd", "PreCompact", "Stop", "PreToolUse", "UserPromptSubmit"]
+VALID_HOOK_TYPES = ["SessionStart", "SessionEnd", "PreCompact", "Stop", "PreToolUse", "UserPromptSubmit", "Notification", "SubagentStart", "SubagentStop"]
 
 def test_plugin_json_required_fields():
     """Validate plugin.json has all required fields."""
@@ -122,6 +122,8 @@ def test_hook_scripts_exist():
                         # Resolve ${CLAUDE_PLUGIN_ROOT}
                         if "${CLAUDE_PLUGIN_ROOT}" in cmd:
                             rel_path = cmd.replace("${CLAUDE_PLUGIN_ROOT}/", "")
+                            # Extract just the script path (first part before any arguments)
+                            rel_path = rel_path.split()[0]
                             script_path_project = PROJECT_ROOT / rel_path
                             script_path_plugin = PLUGIN_ROOT / rel_path
 
@@ -134,7 +136,7 @@ def test_hook_scripts_exist():
                                 # Neither exists, record as missing
                                 script_path = script_path_project
                         else:
-                            script_path = Path(cmd)
+                            script_path = Path(cmd.split()[0])
 
                         if script_path not in checked_scripts:
                             checked_scripts.add(script_path)
