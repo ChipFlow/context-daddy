@@ -216,15 +216,37 @@ EOF
 - Reindex completes → notify tools are ready
 - New symbols detected → update search suggestions
 
+**Research Findings (2026-02-03):**
+
+The MCP library provides `ServerSession.send_tool_list_changed()` to send notifications.
+
+**How to access the session:**
+```python
+from mcp.server.lowlevel.server import request_ctx
+
+# During a tool call, get session reference
+ctx = request_ctx.get()
+session = ctx.session
+
+# Later, send notification
+await session.send_tool_list_changed()
+```
+
 **Implementation approach:**
-1. Research MCP notification protocol
-2. Add notification capability to `repo-map-server.py`
-3. Trigger on reindex completion
+1. Store session reference when first tool call happens
+2. In `periodic_staleness_check()`, detect indexing transition to "complete"
+3. Call `session.send_tool_list_changed()` via stored reference
+
+**Challenges:**
+- Session only accessible during request context (tool calls)
+- Need to store reference safely for async access
+- Handle case where session is closed/disconnected
+- Thread-safety since subprocess completion is detected asynchronously
 
 **Files to modify:**
 - `servers/repo-map-server.py`
 
-**Effort:** Medium - requires understanding MCP notification protocol.
+**Effort:** Medium - requires careful session lifecycle management.
 
 ---
 
@@ -286,25 +308,25 @@ For long narratives, prefix with `&` to run on claude.ai:
 
 ## Implementation Checklist
 
-### Phase 1 (This Week)
-- [ ] Add `context: fork` to story.md
-- [ ] Add `context: fork` to refresh.md
-- [ ] Add `context: fork` to readme.md
-- [ ] Add session ID capture to story.py
-- [ ] Add session ID to narrative footer
+### Phase 1 (Completed - v0.11.0)
+- [x] Add `context: fork` to story.md
+- [x] Add `context: fork` to refresh.md
+- [x] Add `context: fork` to readme.md
+- [x] Add session ID capture to story.py
+- [x] Add session ID to narrative footer guidance
 - [ ] Test forked context behavior
 - [ ] Evaluate hooks-in-frontmatter vs centralized
 
-### Phase 2 (Next Week)
-- [ ] Create `hooks/nudge-mcp.sh`
-- [ ] Add PreToolUse hook to hooks.json
+### Phase 2 (Completed - v0.11.0)
+- [x] Create `hooks/nudge-mcp.sh`
+- [x] Add PreToolUse hook to hooks.json
 - [ ] Test MCP nudging behavior
-- [ ] Create `hooks/subagent-context.sh`
-- [ ] Add SubagentStart hook to hooks.json
+- [x] Create `hooks/subagent-context.sh`
+- [x] Add SubagentStart hook to hooks.json
 - [ ] Test subagent context injection
 
 ### Phase 3 (Future)
-- [ ] Research MCP list_changed protocol
+- [x] Research MCP list_changed protocol (session-based, see 3.1)
 - [ ] Prototype dynamic tool updates
 - [ ] Research task management APIs
 - [ ] Test `--add-dir` behavior
