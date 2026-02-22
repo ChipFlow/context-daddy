@@ -68,6 +68,30 @@ Example:
 tail -f .claude/logs/repo-map-server.log
 ```
 
+## Automatic Narrative Updates
+
+The narrative and learnings are updated automatically by spawning a separate `claude -p` instance (no API key needed):
+
+- **Session start**: If no `.claude/narrative.md` exists, spawns `claude -p --model haiku` in background to create one from git history
+- **Pre-compact**: Before context compaction, spawns background update of narrative + learnings
+- **Git post-commit**: After each commit, spawns background narrative update
+
+Key script: `scripts/update-context.sh` (orchestrates all of the above)
+
+```bash
+# Manual usage
+bash scripts/update-context.sh --create   # Generate initial narrative
+bash scripts/update-context.sh --update   # Update narrative + learnings
+bash scripts/update-context.sh --background --update  # Background update
+
+# Logs
+tail -f .claude/logs/update-context.log
+```
+
+The git post-commit hook is auto-installed on session start via `scripts/install-git-hooks.sh`.
+
+**Important**: Uses `CLAUDECODE=""` to bypass nested-session detection since it runs as a separate process.
+
 ## CI
 
 - Main CI validates structure and tests scripts

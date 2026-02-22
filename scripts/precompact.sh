@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # PreCompact Hook for context-daddy plugin
-# Runs before context compaction to ensure context is refreshed
+# Runs before context compaction to:
+# 1. Flag for post-compaction reorientation
+# 2. Spawn a background agent to update narrative + learnings
 # Note: Repo map is maintained by MCP server, no need to regenerate here
 
 set -euo pipefail
@@ -13,12 +15,14 @@ CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 mkdir -p "${CLAUDE_DIR}"
 touch "${CLAUDE_DIR}/needs-reorientation"
 
+# Spawn background agent to update narrative + learnings before compaction
+# This runs independently - the compaction proceeds without waiting
+if [[ -f "${SCRIPT_DIR}/update-context.sh" ]]; then
+    bash "${SCRIPT_DIR}/update-context.sh" --background --update 2>/dev/null &
+fi
+
 echo "=== PreCompact Hook (context-daddy) ==="
 echo ""
-echo "📝 IMPORTANT: Update .claude/learnings.md with what you built/learned this session:"
-echo "   • New features/APIs implemented"
-echo "   • Integration points added (e.g., Python bindings, new modules)"
-echo "   • Solution approaches discussed and agreed with user"
-echo "   • Non-obvious design decisions or debugging insights"
-echo "   Without this, context compaction will forget what you just built!"
+echo "Narrative and learnings update started in background."
+echo "Context will be refreshed after compaction."
 echo "================================================"

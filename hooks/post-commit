@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Git post-commit hook installed by context-daddy
+# Updates project narrative + learnings after each commit
+# Runs in background so it doesn't slow down git operations
+
+# Find the update-context.sh script
+# It could be in the plugin cache or a local dev path
+CONTEXT_DADDY_SCRIPT=""
+
+# Check common plugin cache locations
+for candidate in \
+    "${HOME}/.claude/plugins/cache/chipflow-context-daddy/context-daddy/"*/scripts/update-context.sh \
+    "${HOME}/.claude/plugins/cache/context-daddy/"*/scripts/update-context.sh \
+    "${CLAUDE_PLUGIN_ROOT:-/nonexistent}/scripts/update-context.sh"; do
+    if [[ -f "${candidate}" ]]; then
+        CONTEXT_DADDY_SCRIPT="${candidate}"
+        break
+    fi
+done
+
+# Also check if there's a path marker left by the installer
+MARKER="${GIT_DIR:-.git}/../.claude/.context-daddy-path"
+if [[ -z "${CONTEXT_DADDY_SCRIPT}" && -f "${MARKER}" ]]; then
+    candidate="$(cat "${MARKER}")/scripts/update-context.sh"
+    if [[ -f "${candidate}" ]]; then
+        CONTEXT_DADDY_SCRIPT="${candidate}"
+    fi
+fi
+
+if [[ -z "${CONTEXT_DADDY_SCRIPT}" ]]; then
+    # Script not found - silently exit (don't break git operations)
+    exit 0
+fi
+
+# Don't run if we're in a rebase or merge
+if [[ -d "${GIT_DIR:-.git}/rebase-merge" ]] || [[ -d "${GIT_DIR:-.git}/rebase-apply" ]]; then
+    exit 0
+fi
+
+# Don't run if already running (lockfile check)
+LOCKFILE="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")/.claude/.update-context.lock"
+if [[ -f "${LOCKFILE}" ]]; then
+    exit 0
+fi
+
+# Run update in background, completely detached from git
+(cd "$(git rev-parse --show-toplevel 2>/dev/null || echo ".")" && \
+    bash "${CONTEXT_DADDY_SCRIPT}" --background --update) &>/dev/null &
+disown 2>/dev/null || true
+
+exit 0

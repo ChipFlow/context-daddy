@@ -18,6 +18,9 @@ rm -f "${CLAUDE_DIR}/session-ended"
 # Generate project manifest (quick, runs synchronously)
 uv run "${SCRIPT_DIR}/scan.py" "${PROJECT_ROOT}" >/dev/null 2>&1 || true
 
+# Install git hooks (idempotent, silent)
+bash "${SCRIPT_DIR}/install-git-hooks.sh" "${PROJECT_ROOT}" 2>/dev/null || true
+
 REPO_MAP="${CLAUDE_DIR}/repo-map.md"
 DB_FILE="${CLAUDE_DIR}/repo-map.db"
 PROGRESS_FILE="${CLAUDE_DIR}/repo-map-progress.json"
@@ -102,6 +105,14 @@ fi
 
 # Inject narrative sections if they exist
 HAS_NARRATIVE=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('has_narrative', False))" 2>/dev/null || echo "False")
+
+if [[ "${HAS_NARRATIVE}" != "True" ]]; then
+    # No narrative exists - spawn background agent to create one
+    if [[ -x "${SCRIPT_DIR}/update-context.sh" ]] || [[ -f "${SCRIPT_DIR}/update-context.sh" ]]; then
+        bash "${SCRIPT_DIR}/update-context.sh" --background --create 2>/dev/null &
+        STATUS_MSG="${STATUS_MSG} | Generating narrative in background..."
+    fi
+fi
 
 if [[ "${HAS_NARRATIVE}" == "True" ]]; then
     NARRATIVE_SUMMARY=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('narrative_summary', ''))" 2>/dev/null || true)
