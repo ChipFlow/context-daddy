@@ -17,13 +17,6 @@ LEARNINGS_FILE="${CLAUDE_DIR}/learnings.md"
 LOCKFILE="${CLAUDE_DIR}/.update-context.lock"
 LOGFILE="${CLAUDE_DIR}/logs/update-context.log"
 
-# Find claude binary
-CLAUDE_BIN=$(command -v claude 2>/dev/null || echo "")
-if [[ -z "${CLAUDE_BIN}" ]]; then
-    echo "Error: claude CLI not found in PATH" >&2
-    exit 1
-fi
-
 # Parse arguments
 MODE=""
 BACKGROUND=false
@@ -47,7 +40,7 @@ fi
 # Ensure directories exist
 mkdir -p "${CLAUDE_DIR}/logs"
 
-# Lockfile to prevent concurrent updates
+# Lockfile to prevent concurrent updates (checked before claude binary so we bail early)
 if [[ -f "${LOCKFILE}" ]]; then
     # Check if lock is stale (older than 5 minutes)
     if [[ "$(uname)" == "Darwin" ]]; then
@@ -68,6 +61,14 @@ echo $$ > "${LOCKFILE}"
 trap 'rm -f "${LOCKFILE}"' EXIT
 
 run_update() {
+    # Find claude binary
+    local CLAUDE_BIN
+    CLAUDE_BIN=$(command -v claude 2>/dev/null || echo "")
+    if [[ -z "${CLAUDE_BIN}" ]]; then
+        echo "Error: claude CLI not found in PATH" >&2
+        return 1
+    fi
+
     local prompt=""
 
     if [[ "${MODE}" == "create" ]]; then
