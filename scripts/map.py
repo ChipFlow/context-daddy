@@ -1035,6 +1035,14 @@ def main():
         # Load symbol cache
         cache = SymbolCache(claude_dir / "repo-map-cache.json")
 
+        # Record found_file_count early so the staleness check won't re-trigger
+        # if indexing gets killed before completion. This prevents infinite reindex
+        # loops on large repos where some files can't be cached (broken symlinks,
+        # parse failures, etc.) — without this, len(cached_files) != find_files()
+        # count and is_stale() keeps firing.
+        cache.found_file_count = total_files
+        cache.save()
+
         # First pass: check cache and categorize files
         all_symbols = []
         all_rel_paths = set()
@@ -1140,12 +1148,7 @@ def main():
         # Remove deleted files from cache
         cache.remove_stale(all_rel_paths)
 
-        # Record the total number of files found on disk (not just cached ones)
-        # This is used by the MCP server's staleness check to avoid false positives
-        # when some files can't be read (broken symlinks, permission errors, etc.)
-        cache.found_file_count = total_files
-
-        # Save final cache state
+        # Save final cache state (found_file_count already set earlier)
         cache.save()
 
         # Write to SQLite database for MCP server queries
