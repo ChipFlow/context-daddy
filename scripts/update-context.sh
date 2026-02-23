@@ -161,8 +161,10 @@ RULES:
     echo "[$(date -Iseconds)] Starting ${MODE} (model: ${MODEL})" >> "${LOGFILE}"
 
     # Run claude in print mode with file tools enabled
-    # Unset CLAUDECODE to allow nested invocation (we're a separate process)
-    CLAUDECODE="" "${CLAUDE_BIN}" -p \
+    # CLAUDECODE="" allows nested invocation (we're a separate process)
+    # CONTEXT_DADDY_UPDATING=1 prevents the spawned instance's session-start.sh
+    # from recursively spawning more update agents (infinite loop prevention)
+    CLAUDECODE="" CONTEXT_DADDY_UPDATING=1 "${CLAUDE_BIN}" -p \
         --model "${MODEL}" \
         --dangerously-skip-permissions \
         --allowedTools "Read Edit Write Bash" \

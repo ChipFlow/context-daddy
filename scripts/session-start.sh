@@ -5,6 +5,12 @@
 
 set -euo pipefail
 
+# Guard against recursive spawning: if we're a background update agent,
+# skip session-start entirely to prevent infinite claude -p loops.
+if [[ -n "${CONTEXT_DADDY_UPDATING:-}" ]]; then
+    exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PWD}"
 CLAUDE_DIR="${PROJECT_ROOT}/.claude"
@@ -108,7 +114,11 @@ HAS_NARRATIVE=$(echo "${CONTEXT_DATA}" | python3 -c "import sys,json; print(json
 
 if [[ "${HAS_NARRATIVE}" != "True" ]]; then
     # No narrative exists - spawn background agent to create one
-    if [[ -x "${SCRIPT_DIR}/update-context.sh" ]] || [[ -f "${SCRIPT_DIR}/update-context.sh" ]]; then
+    # Create lockfile SYNCHRONOUSLY before forking to prevent race conditions
+    # where multiple session-start.sh invocations each spawn their own agent
+    LOCKFILE="${CLAUDE_DIR}/.update-context.lock"
+    if [[ ! -f "${LOCKFILE}" ]] && [[ -f "${SCRIPT_DIR}/update-context.sh" ]]; then
+        echo $$ > "${LOCKFILE}"
         bash "${SCRIPT_DIR}/update-context.sh" --background --create 2>/dev/null &
         STATUS_MSG="${STATUS_MSG} | Generating narrative in background..."
     fi
