@@ -120,6 +120,7 @@ class SymbolCache:
     def __init__(self, cache_path: Path):
         self.cache_path = cache_path
         self.files: dict[str, FileCache] = {}
+        self.found_file_count: int | None = None
         self._dirty_count = 0
         self._load()
 
@@ -131,6 +132,7 @@ class SymbolCache:
             data = json.loads(self.cache_path.read_text())
             if data.get("version") != CACHE_VERSION:
                 return  # Invalidate cache on version mismatch
+            self.found_file_count = data.get("found_file_count")
             for file_path, entry in data.get("files", {}).items():
                 self.files[file_path] = FileCache.from_dict(entry)
         except (json.JSONDecodeError, KeyError, TypeError):
@@ -140,6 +142,7 @@ class SymbolCache:
         """Save cache to disk atomically."""
         data = {
             "version": CACHE_VERSION,
+            "found_file_count": self.found_file_count,
             "files": {fp: fc.to_dict() for fp, fc in self.files.items()},
         }
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1136,6 +1139,11 @@ def main():
 
         # Remove deleted files from cache
         cache.remove_stale(all_rel_paths)
+
+        # Record the total number of files found on disk (not just cached ones)
+        # This is used by the MCP server's staleness check to avoid false positives
+        # when some files can't be read (broken symlinks, permission errors, etc.)
+        cache.found_file_count = total_files
 
         # Save final cache state
         cache.save()

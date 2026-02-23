@@ -284,8 +284,10 @@ def is_stale() -> tuple[bool, str]:
     except (json.JSONDecodeError, IOError):
         return True, "cache file corrupt"
 
-    # Count files in cache vs current
-    cached_count = len(cache_data.get("files", {}))
+    # Count files: prefer found_file_count (total files found on disk during last
+    # index) over len(files) which only counts successfully cached files. This
+    # avoids false positives when some files can't be read (broken symlinks, etc.)
+    cached_count = cache_data.get("found_file_count", len(cache_data.get("files", {})))
 
     # Quick file count check
     current_files = []
