@@ -16,6 +16,10 @@
 
 set -euo pipefail
 
+# Exit cleanly on any error — a PostToolUse hook failure shows as an error
+# to the user but doesn't provide useful info. Better to silently no-op.
+trap 'exit 0' ERR
+
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # Marker file in /tmp to avoid triggering Claude Code's ~/.claude/ file watcher.
@@ -50,6 +54,11 @@ elif [[ -d "${FILE_PATH}" ]]; then
 else
     # File might not exist yet (Write creates it) - use parent dir
     FILE_DIR=$(dirname "${FILE_PATH}")
+fi
+
+# Bail if directory doesn't exist
+if [[ ! -d "${FILE_DIR}" ]]; then
+    exit 0
 fi
 
 # Find git root for the file's directory
