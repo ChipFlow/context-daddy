@@ -7,15 +7,11 @@
 #   update-context.sh --update   # Update existing narrative + learnings
 #   update-context.sh --background --create  # Run in background (for hooks)
 #   update-context.sh --background --update  # Run in background (for hooks)
+#   update-context.sh --create --project /path/to/repo  # Operate on a different project
 
 set -euo pipefail
 
 PROJECT_ROOT="${PWD}"
-CLAUDE_DIR="${PROJECT_ROOT}/.claude"
-NARRATIVE_FILE="${CLAUDE_DIR}/narrative.md"
-LEARNINGS_FILE="${CLAUDE_DIR}/learnings.md"
-LOCKFILE="${CLAUDE_DIR}/.update-context.lock"
-LOGFILE="${CLAUDE_DIR}/logs/update-context.log"
 
 # Parse arguments
 MODE=""
@@ -28,6 +24,7 @@ while [[ $# -gt 0 ]]; do
         --update) MODE="update"; shift ;;
         --background) BACKGROUND=true; shift ;;
         --model) MODEL="$2"; shift 2 ;;
+        --project) PROJECT_ROOT="$2"; shift 2 ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
@@ -36,6 +33,16 @@ if [[ -z "${MODE}" ]]; then
     echo "Error: Must specify --create or --update" >&2
     exit 1
 fi
+
+# Resolve PROJECT_ROOT to absolute path
+PROJECT_ROOT=$(cd "${PROJECT_ROOT}" && pwd)
+
+# Derive paths from PROJECT_ROOT (after argument parsing so --project takes effect)
+CLAUDE_DIR="${PROJECT_ROOT}/.claude"
+NARRATIVE_FILE="${CLAUDE_DIR}/narrative.md"
+LEARNINGS_FILE="${CLAUDE_DIR}/learnings.md"
+LOCKFILE="${CLAUDE_DIR}/.update-context.lock"
+LOGFILE="${CLAUDE_DIR}/logs/update-context.log"
 
 # Ensure directories exist
 mkdir -p "${CLAUDE_DIR}/logs"
@@ -158,12 +165,13 @@ RULES:
 - Only update files if there are meaningful changes to record'
     fi
 
-    echo "[$(date -Iseconds)] Starting ${MODE} (model: ${MODEL})" >> "${LOGFILE}"
+    echo "[$(date -Iseconds)] Starting ${MODE} (model: ${MODEL}) in ${PROJECT_ROOT}" >> "${LOGFILE}"
 
-    # Run claude in print mode with file tools enabled
+    # Run claude in print mode from the project directory
     # CLAUDECODE="" allows nested invocation (we're a separate process)
     # CONTEXT_DADDY_UPDATING=1 prevents the spawned instance's session-start.sh
     # from recursively spawning more update agents (infinite loop prevention)
+    cd "${PROJECT_ROOT}"
     CLAUDECODE="" CONTEXT_DADDY_UPDATING=1 "${CLAUDE_BIN}" -p \
         --model "${MODEL}" \
         --dangerously-skip-permissions \
