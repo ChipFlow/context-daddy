@@ -21,7 +21,7 @@ SERVERS_ROOT = PROJECT_ROOT / "servers"
 
 # Note: hooks are autodiscovered from hooks/hooks.json, NOT in plugin.json
 REQUIRED_PLUGIN_FIELDS = ["name", "version", "description", "author", "keywords", "repository"]
-VALID_HOOK_TYPES = ["SessionStart", "SessionEnd", "PreCompact", "Stop", "PreToolUse", "UserPromptSubmit", "Notification", "SubagentStart", "SubagentStop"]
+VALID_HOOK_TYPES = ["SessionStart", "SessionEnd", "PreCompact", "Stop", "PreToolUse", "PostToolUse", "UserPromptSubmit", "Notification", "SubagentStart", "SubagentStop"]
 
 def test_plugin_json_required_fields():
     """Validate plugin.json has all required fields."""
