@@ -92,26 +92,22 @@ echo "${NEW_ROOT}" > "${MARKER_FILE}"
 
 NEW_CLAUDE_DIR="${NEW_ROOT}/.claude"
 
-# Spawn ALL .claude/ directory writes in a single background process
-# to avoid triggering Claude Code's file watcher during hook execution.
+# Spawn background tasks in a single subshell to avoid triggering
+# Claude Code's file watcher during hook execution.
+# NOTE: repo-map indexing (map.py) is NOT spawned here — the MCP server
+# handles it on startup with proper resource limits (CPU time, memory).
 (
     mkdir -p "${NEW_CLAUDE_DIR}/logs"
 
-    # 1. Generate repo-map for the new project
-    if command -v uv &>/dev/null && [[ -f "${PLUGIN_ROOT}/scripts/map.py" ]]; then
-        uv run "${PLUGIN_ROOT}/scripts/map.py" "${NEW_ROOT}" \
-            >"${NEW_CLAUDE_DIR}/logs/map-switch.log" 2>&1 || true
-    fi
-
-    # 2. Create narrative if none exists
+    # 1. Create narrative if none exists
     if [[ ! -f "${NEW_CLAUDE_DIR}/narrative.md" ]]; then
         bash "${PLUGIN_ROOT}/scripts/update-context.sh" \
             --background --create --project "${NEW_ROOT}" 2>/dev/null || true
     fi
 
-    # 3. Generate project manifest
+    # 2. Generate project manifest (timeout to avoid burning CPU on huge repos)
     if command -v uv &>/dev/null && [[ -f "${PLUGIN_ROOT}/scripts/scan.py" ]]; then
-        uv run "${PLUGIN_ROOT}/scripts/scan.py" "${NEW_ROOT}" >/dev/null 2>&1 || true
+        timeout 60 uv run "${PLUGIN_ROOT}/scripts/scan.py" "${NEW_ROOT}" >/dev/null 2>&1 || true
     fi
 ) &
 disown
@@ -169,8 +165,8 @@ fi
 SUMMARY="${SUMMARY}
 
 BACKGROUND TASKS STARTED:
-- Repo-map generation (map.py) running in background for ${NEW_ROOT}
 - Narrative creation spawned if not already present
+- Project manifest generation running
 
 IMPORTANT: repo-map MCP tools (search_symbols, get_symbol_content, list_files) are indexed for the ORIGINAL project and will NOT work for this project. Use Grep/Glob/Read for code navigation here."
 
