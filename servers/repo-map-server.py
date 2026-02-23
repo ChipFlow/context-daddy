@@ -1376,9 +1376,11 @@ async def main():
     except Exception as e:
         logger.warning(f"Startup staleness check failed: {e}")
 
-    # Start periodic checks
-    asyncio.create_task(periodic_staleness_check())
-    asyncio.create_task(periodic_watchdog_check())
+    # Start periodic checks (keep handles so we can cancel on shutdown)
+    background_tasks = [
+        asyncio.create_task(periodic_staleness_check()),
+        asyncio.create_task(periodic_watchdog_check()),
+    ]
 
     logger.info("MCP Server ready, waiting for tool calls...")
 
@@ -1390,6 +1392,10 @@ async def main():
         raise
     finally:
         logger.info("MCP Server shutting down")
+        for task in background_tasks:
+            task.cancel()
+        # Wait for tasks to finish cancellation
+        await asyncio.gather(*background_tasks, return_exceptions=True)
 
 
 if __name__ == "__main__":
