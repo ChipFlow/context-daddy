@@ -258,10 +258,17 @@ def check_indexing_watchdog():
         logger.error(f"Watchdog check failed: {e}")
 
 
-def is_stale() -> tuple[bool, str]:
+def is_stale(full_check: bool = False) -> tuple[bool, str]:
     """
     Check if the repo map needs reindexing.
     Returns (is_stale, reason).
+
+    When full_check=False (default), uses cached file paths for mtime sampling
+    and skips the expensive filesystem walk. This makes startup fast on large
+    repos (iree: 10s → <0.1s).
+
+    When full_check=True, does a full file count to detect new/deleted files.
+    Used by periodic_staleness_check (every 60s in background).
     """
     indexer = get_indexer()
     db_path = get_db_path()
@@ -284,25 +291,37 @@ def is_stale() -> tuple[bool, str]:
     except (json.JSONDecodeError, IOError):
         return True, "cache file corrupt"
 
-    # Count files: prefer found_file_count (total files found on disk during last
-    # index) over len(files) which only counts successfully cached files. This
-    # avoids false positives when some files can't be read (broken symlinks, etc.)
-    cached_count = cache_data.get("found_file_count", len(cache_data.get("files", {})))
+    if full_check:
+        # Full filesystem walk — expensive on large repos but detects new/deleted files
+        cached_count = cache_data.get("found_file_count", len(cache_data.get("files", {})))
+        current_files = []
+        for ext in [".py", ".rs", ".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx"]:
+            current_files.extend(indexer.find_files(project_root, {ext}))
+        current_count = len(current_files)
 
-    # Quick file count check
-    current_files = []
-    for ext in [".py", ".rs", ".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx"]:
-        current_files.extend(indexer.find_files(project_root, {ext}))
-    current_count = len(current_files)
+        if current_count != cached_count:
+            return True, f"file count changed ({cached_count} cached, {current_count} found)"
 
-    if current_count != cached_count:
-        return True, f"file count changed ({cached_count} cached, {current_count} found)"
-
-    # Check if any file is newer than DB
-    db_mtime = db_path.stat().st_mtime
-    for f in current_files[:100]:  # Sample check for speed
-        if f.stat().st_mtime > db_mtime:
-            return True, "files modified since last index"
+        # Sample mtime check from the full file list
+        db_mtime = db_path.stat().st_mtime
+        for f in current_files[:100]:
+            if f.stat().st_mtime > db_mtime:
+                return True, "files modified since last index"
+    else:
+        # Fast path: sample mtime check using cached file paths (no filesystem walk)
+        db_mtime = db_path.stat().st_mtime
+        cached_files = cache_data.get("files", {})
+        sample_count = 0
+        for rel_path in cached_files:
+            full_path = project_root / rel_path
+            try:
+                if full_path.stat().st_mtime > db_mtime:
+                    return True, "files modified since last index"
+            except OSError:
+                continue  # File may have been deleted — full_check will catch it
+            sample_count += 1
+            if sample_count >= 100:
+                break
 
     return False, "up to date"
 
@@ -1325,13 +1344,17 @@ def md_list_figures(file_path: str) -> str:
 
 
 async def periodic_staleness_check():
-    """Periodically check if reindexing is needed."""
+    """Periodically check if reindexing is needed.
+
+    Uses full_check=True to detect new/deleted files via filesystem walk.
+    This is expensive on large repos but runs in the background every 60s.
+    """
     while True:
         await asyncio.sleep(STALENESS_CHECK_INTERVAL)
         try:
             is_indexing = _indexing_process is not None and _indexing_process.poll() is None
             if not is_indexing:
-                stale, reason = is_stale()
+                stale, reason = is_stale(full_check=True)
                 if stale:
                     logger.info(f"Index is stale ({reason}), starting background reindex")
                     index_in_background()
