@@ -646,10 +646,18 @@ def similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower().replace('_', ''), b.lower().replace('_', '')).ratio()
 
 
+# Maximum number of symbols for O(n²) similarity checks.
+# 2000 symbols → ~2M comparisons (fast). 13k symbols → ~87M (burns CPU for minutes).
+_SIMILARITY_MAX_SYMBOLS = 2000
+
+
 def find_similar_classes(symbols: list[Symbol], name_threshold: float = 0.75, doc_threshold: float = 0.65) -> list[tuple[Symbol, Symbol, str]]:
     """Find classes with similar names or docstrings (same language only)."""
-    similar = []
     classes = [s for s in symbols if s.kind == "class" and not s.name.startswith("Test")]
+    if len(classes) > _SIMILARITY_MAX_SYMBOLS:
+        return []
+
+    similar = []
     compared = set()
 
     for i, cls1 in enumerate(classes):
@@ -682,8 +690,11 @@ def find_similar_classes(symbols: list[Symbol], name_threshold: float = 0.75, do
 
 def find_similar_functions(symbols: list[Symbol], name_threshold: float = 0.75, doc_threshold: float = 0.65) -> list[tuple[Symbol, Symbol, str]]:
     """Find top-level functions with similar names or docstrings (same language only)."""
-    similar = []
     functions = [s for s in symbols if s.kind == "function" and not s.name.startswith('_') and not s.name.startswith('test_')]
+    if len(functions) > _SIMILARITY_MAX_SYMBOLS:
+        return []
+
+    similar = []
     compared = set()
 
     for i, fn1 in enumerate(functions):
