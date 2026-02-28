@@ -31,6 +31,24 @@ REPO_MAP="${CLAUDE_DIR}/repo-map.md"
 DB_FILE="${CLAUDE_DIR}/repo-map.db"
 PROGRESS_FILE="${CLAUDE_DIR}/repo-map-progress.json"
 
+# Check if MCP tool permissions are configured
+MCP_PERMS_MISSING=""
+MCP_PERMS_MISSING=$(python3 -c "
+import json
+from pathlib import Path
+settings_path = Path.home() / '.claude' / 'settings.json'
+if not settings_path.exists():
+    print('missing')
+else:
+    try:
+        settings = json.loads(settings_path.read_text())
+        allow = settings.get('permissions', {}).get('allow', [])
+        if not any('mcp__plugin_context-daddy_repo-map' in str(e) for e in allow):
+            print('missing')
+    except Exception:
+        pass
+" 2>/dev/null || true)
+
 # Determine repo map status message (check indexing status)
 INDEXING_STATUS=""
 if [[ -f "${DB_FILE}" ]]; then
@@ -176,6 +194,16 @@ elif [[ -f "${DB_FILE}" ]]; then
     CONTEXT="${CONTEXT}\n• md_list_tables/md_get_table - Navigate tables"
 elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
+fi
+
+# Add permission warning if MCP tools aren't auto-allowed
+if [[ "${MCP_PERMS_MISSING}" == "missing" ]]; then
+    STATUS_MSG="${STATUS_MSG} | ⚠️ MCP tools need permission setup"
+    CONTEXT="${CONTEXT}\n\n⚠️ **MCP tool permissions not configured**"
+    CONTEXT="${CONTEXT}\ncontext-daddy's MCP tools require per-call approval right now."
+    CONTEXT="${CONTEXT}\nAsk the user: \"context-daddy's MCP tools need permission approval on every use. Would you like me to auto-allow them? They're all read-only code search tools.\""
+    CONTEXT="${CONTEXT}\nIf user agrees, run: uv run ${SCRIPT_DIR}/setup-permissions.py"
+    CONTEXT="${CONTEXT}\nThen tell them to restart the session for changes to take effect."
 fi
 
 # Output JSON with systemMessage for user display
