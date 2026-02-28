@@ -1,9 +1,15 @@
-# context daddy 🧔
+<p align="center">
+  <img src="docs/logo.png" alt="context daddy" width="200">
+</p>
 
-*Your codebase's context needs a responsible adult.*
+<h1 align="center">context daddy</h1>
 
-[![CI](https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml/badge.svg)](https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml)
-[![Docs](https://github.com/ChipFlow/context-daddy/actions/workflows/pages.yml/badge.svg)](https://chipflow.github.io/context-daddy/)
+<p align="center"><em>Your codebase's context needs a responsible adult.</em></p>
+
+<p align="center">
+  <a href="https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml"><img src="https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://chipflow.github.io/context-daddy/"><img src="https://github.com/ChipFlow/context-daddy/actions/workflows/pages.yml/badge.svg" alt="Docs"></a>
+</p>
 
 **[Documentation](https://chipflow.github.io/context-daddy/)** · **[Changelog](CHANGELOG.md)**
 
