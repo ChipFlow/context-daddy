@@ -4,8 +4,9 @@
 # dependencies = []
 # ///
 """
-Tests for setup-permissions.py.
-Validates the script correctly manages MCP tool permissions in settings.json.
+Tests for setup-permissions.py and session-start.sh permission check.
+Validates the script correctly manages MCP tool permissions in settings.json
+and that session-start.sh warns when permissions are missing.
 """
 
 import json
@@ -18,6 +19,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 SETUP_SCRIPT = SCRIPTS_DIR / "setup-permissions.py"
+SESSION_START_SCRIPT = SCRIPTS_DIR / "session-start.sh"
 
 PERMISSION_PATTERN = "mcp__plugin_context-daddy_repo-map__*"
 
@@ -28,6 +30,16 @@ def run_setup(home_dir: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["uv", "run", str(SETUP_SCRIPT)],
         capture_output=True, text=True, env=env, timeout=30,
+    )
+
+
+def run_session_start(home_dir: str, cwd: str | Path | None = None) -> subprocess.CompletedProcess:
+    """Run session-start.sh with a custom HOME, return result."""
+    env = {**os.environ, "HOME": home_dir}
+    return subprocess.run(
+        ["bash", str(SESSION_START_SCRIPT)],
+        capture_output=True, text=True, env=env, timeout=60,
+        cwd=cwd or str(PROJECT_ROOT),
     )
 
 
@@ -175,6 +187,122 @@ def test_handles_empty_permissions():
         return True
 
 
+def test_session_start_warns_when_perms_missing():
+    """session-start.sh includes permission warning when no allow rule exists."""
+    print("\n" + "=" * 60)
+    print("TEST 6: session-start.sh warns when permissions missing")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a HOME with no MCP permission
+        claude_home = Path(tmpdir) / ".claude"
+        claude_home.mkdir(parents=True)
+        settings_path = claude_home / "settings.json"
+        settings_path.write_text(json.dumps({"permissions": {"allow": ["Read(**)"]}}, indent=2))
+
+        result = run_session_start(tmpdir)
+        if result.returncode != 0:
+            print(f"❌ FAIL: session-start.sh exited with {result.returncode}")
+            print(f"  stderr: {result.stderr[:500]}")
+            return False
+
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            print(f"❌ FAIL: Invalid JSON output: {result.stdout[:300]}")
+            return False
+
+        system_msg = data.get("systemMessage", "")
+        context = data.get("additionalContext", "")
+
+        if "permission" not in system_msg.lower():
+            print(f"❌ FAIL: systemMessage missing permission warning: {system_msg}")
+            return False
+
+        if "MCP tool permissions not configured" not in context:
+            print(f"❌ FAIL: additionalContext missing permission guidance")
+            return False
+
+        if "setup-permissions.py" not in context:
+            print(f"❌ FAIL: additionalContext missing setup script reference")
+            return False
+
+        print("✅ PASS: Permission warning present in both systemMessage and additionalContext")
+        return True
+
+
+def test_session_start_no_warning_when_perms_present():
+    """session-start.sh omits permission warning when allow rule exists."""
+    print("\n" + "=" * 60)
+    print("TEST 7: session-start.sh no warning when permissions present")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a HOME with the MCP permission already set
+        claude_home = Path(tmpdir) / ".claude"
+        claude_home.mkdir(parents=True)
+        settings_path = claude_home / "settings.json"
+        settings_path.write_text(json.dumps({
+            "permissions": {"allow": ["Read(**)", PERMISSION_PATTERN]}
+        }, indent=2))
+
+        result = run_session_start(tmpdir)
+        if result.returncode != 0:
+            print(f"❌ FAIL: session-start.sh exited with {result.returncode}")
+            print(f"  stderr: {result.stderr[:500]}")
+            return False
+
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            print(f"❌ FAIL: Invalid JSON output: {result.stdout[:300]}")
+            return False
+
+        system_msg = data.get("systemMessage", "")
+        context = data.get("additionalContext", "")
+
+        if "permission" in system_msg.lower() and "setup" in system_msg.lower():
+            print(f"❌ FAIL: systemMessage should NOT contain permission warning: {system_msg}")
+            return False
+
+        if "MCP tool permissions not configured" in context:
+            print(f"❌ FAIL: additionalContext should NOT contain permission warning")
+            return False
+
+        print("✅ PASS: No permission warning when permissions are configured")
+        return True
+
+
+def test_session_start_no_warning_with_no_settings_file():
+    """session-start.sh warns when ~/.claude/settings.json doesn't exist."""
+    print("\n" + "=" * 60)
+    print("TEST 8: session-start.sh warns when no settings.json")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # HOME with no .claude/settings.json at all
+        result = run_session_start(tmpdir)
+        if result.returncode != 0:
+            print(f"❌ FAIL: session-start.sh exited with {result.returncode}")
+            print(f"  stderr: {result.stderr[:500]}")
+            return False
+
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            print(f"❌ FAIL: Invalid JSON output: {result.stdout[:300]}")
+            return False
+
+        context = data.get("additionalContext", "")
+
+        if "MCP tool permissions not configured" not in context:
+            print(f"❌ FAIL: Should warn when settings.json doesn't exist")
+            return False
+
+        print("✅ PASS: Warning present when no settings.json exists")
+        return True
+
+
 if __name__ == "__main__":
     tests = [
         test_script_exists,
@@ -182,6 +310,9 @@ if __name__ == "__main__":
         test_adds_to_existing_settings,
         test_idempotent,
         test_handles_empty_permissions,
+        test_session_start_warns_when_perms_missing,
+        test_session_start_no_warning_when_perms_present,
+        test_session_start_no_warning_with_no_settings_file,
     ]
 
     print("\n" + "=" * 60)
