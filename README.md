@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="docs/logo.png" alt="context daddy" width="200">
+  <img src="docs/social.png" alt="context daddy" width="640">
 </p>
-
-<h1 align="center">context daddy</h1>
-
-<p align="center"><em>Your codebase's context needs a responsible adult.</em></p>
 
 <p align="center">
   <a href="https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml"><img src="https://github.com/ChipFlow/context-daddy/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
