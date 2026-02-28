@@ -152,11 +152,10 @@ Throughout: balancing comprehensive understanding against context overload. That
 
 ## Open Questions
 
-- Cache invalidation feels heavyweight. Filesystem watching?
-- How do we keep narratives from going stale?
-- Is multiprocess architecture over-engineered?
 - FTS5 search is underutilized - what's the right UX?
-
+- Are 'learnings' needed with new claude memory capability?
+- Can we make better use of new claude memory?
+- 
 ## License
 
 MIT
