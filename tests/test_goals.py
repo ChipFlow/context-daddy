@@ -34,16 +34,32 @@ def run_goals(args: list[str], home_dir: str, cwd: str | None = None,
     return result
 
 
-def get_current_goal(claude_dir: Path) -> str | None:
-    """Read the .current-goal file."""
+def get_current_goal_raw(claude_dir: Path) -> str | None:
+    """Read the raw .current-goal file content."""
     p = claude_dir / ".current-goal"
     return p.read_text().strip() if p.exists() else None
+
+
+def get_current_goal(claude_dir: Path) -> str | None:
+    """Read the .current-goal file, returning just the UUID part."""
+    raw = get_current_goal_raw(claude_dir)
+    if raw is None:
+        return None
+    # v2 format: UUID:step-id, v1 format: bare UUID
+    return raw.split(":")[0]
 
 
 def get_index(claude_dir: Path) -> dict:
     """Read active-goals.json."""
     p = claude_dir / "active-goals.json"
     return json.loads(p.read_text()) if p.exists() else {}
+
+
+def extract_goal_id(output: str) -> str:
+    """Extract the UUID from 'Created goal: UUID (slug)' output."""
+    line = output.split("Created goal: ")[1].split("\n")[0].strip()
+    # v2 format: "UUID (slug)" -> just UUID
+    return line.split(" ")[0]
 
 
 def test_script_exists():
@@ -161,10 +177,10 @@ def test_switch_goal():
 
         # Create two goals
         r1 = run_goals(["create", "Goal A", "Obj A"], home, str(project))
-        id_a = r1.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        id_a = extract_goal_id(r1.stdout)
 
         r2 = run_goals(["create", "Goal B", "Obj B"], home, str(project))
-        id_b = r2.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        id_b = extract_goal_id(r2.stdout)
 
         # Current should be B (last created)
         current = get_current_goal(project / ".claude")
@@ -215,7 +231,7 @@ def test_update_step_complete():
 
         # Create goal then manually add steps
         r = run_goals(["create", "Multi Step", "Testing steps"], home, str(project))
-        goal_id = r.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        goal_id = extract_goal_id(r.stdout)
 
         # Add more steps
         run_goals(["add-step", goal_id, "Step two"], home, str(project))
@@ -228,7 +244,7 @@ def test_update_step_complete():
         goal_file = Path(home) / ".claude" / "goals" / f"{goal_id}.md"
         content = goal_file.read_text()
 
-        assert "- [x] Define plan steps" in content, "Step 1 should be completed"
+        assert "[x]" in content and "Define plan steps" in content, "Step 1 should be completed"
         assert "← current" in content, "Should have a current marker"
 
         # Verify index updated
@@ -253,7 +269,7 @@ def test_add_learning():
         (project / ".claude").mkdir()
 
         r = run_goals(["create", "Learn Goal", "Obj"], home, str(project))
-        goal_id = r.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        goal_id = extract_goal_id(r.stdout)
 
         run_goals(["add-learning", goal_id, "Direct AST annotation doesn't work because optimisation strips it."], home, str(project))
 
@@ -285,7 +301,7 @@ def test_add_commit():
         (project / ".claude").mkdir()
 
         r = run_goals(["create", "Commit Goal", "Obj"], home, str(project))
-        goal_id = r.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        goal_id = extract_goal_id(r.stdout)
 
         # Add 12 commits - only 10 should remain
         for i in range(12):
@@ -322,7 +338,7 @@ def test_add_step():
         (project / ".claude").mkdir()
 
         r = run_goals(["create", "Step Goal", "Obj"], home, str(project))
-        goal_id = r.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        goal_id = extract_goal_id(r.stdout)
 
         # Add step at end
         run_goals(["add-step", goal_id, "Last step"], home, str(project))
@@ -364,7 +380,7 @@ def test_link_project():
         (other_project / ".claude").mkdir()
 
         r = run_goals(["create", "Multi Project", "Obj"], home, str(project))
-        goal_id = r.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        goal_id = extract_goal_id(r.stdout)
 
         run_goals(["link-project", goal_id, str(other_project), "--role", "dependency"], home, str(project))
 
@@ -403,7 +419,7 @@ def test_archive():
         (project / ".claude").mkdir()
 
         r = run_goals(["create", "Archive Me", "Obj"], home, str(project))
-        goal_id = r.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        goal_id = extract_goal_id(r.stdout)
 
         # Verify it exists
         assert (Path(home) / ".claude" / "goals" / f"{goal_id}.md").exists()
@@ -445,7 +461,7 @@ def test_sync_discovers_goals():
 
         # Create a goal from this project
         r = run_goals(["create", "Sync Test", "Obj"], home, str(project))
-        goal_id = r.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        goal_id = extract_goal_id(r.stdout)
 
         # Delete the index to simulate fresh sync
         (project / ".claude" / "active-goals.json").unlink()
@@ -502,7 +518,7 @@ def test_partial_uuid():
         (project / ".claude").mkdir()
 
         r = run_goals(["create", "Partial Test", "Obj"], home, str(project))
-        goal_id = r.stdout.split("Created goal: ")[1].split("\n")[0].strip()
+        goal_id = extract_goal_id(r.stdout)
 
         # Use first 4 chars
         short_id = goal_id[:4]
