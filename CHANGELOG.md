@@ -5,6 +5,13 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.4] - 2026-03-01
+
+### Fixed
+- **MCP permissions auto-installed** - No longer requires user consent prompt; wildcard allow rules added automatically on session start
+- **Goal-driven workflow guidance** - Context injection tells Claude to use goals instead of plans for multi-step tasks, and to auto-continue after completing a step
+- **PostToolUse nudge** - After completing a goal step, Claude is prompted to continue to the next one
+
 ## [0.14.3] - 2026-03-01
 
 ### Added
