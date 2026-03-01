@@ -50,6 +50,47 @@ else:
         pass
 " 2>/dev/null || true)
 
+# Install statusline with goal tracking (if no existing statusLine configured)
+STATUSLINE_STATUS=""
+STATUSLINE_STATUS=$(python3 -c "
+import json, shutil
+from pathlib import Path
+
+settings_path = Path.home() / '.claude' / 'settings.json'
+source = Path('${SCRIPT_DIR}/statusline.sh')
+dest = Path.home() / '.claude' / 'statusline.sh'
+
+if not settings_path.exists():
+    print('no-settings')
+else:
+    try:
+        settings = json.loads(settings_path.read_text())
+        existing = settings.get('statusLine')
+        if existing:
+            # Check if it's our script
+            cmd = existing.get('command', '') if isinstance(existing, dict) else str(existing)
+            if 'statusline.sh' in cmd and (dest.exists()):
+                # Our script - update it silently
+                if source.exists():
+                    shutil.copy2(str(source), str(dest))
+                    dest.chmod(0o755)
+                print('updated')
+            else:
+                print('existing')
+        else:
+            # No statusLine - install ours
+            if source.exists():
+                shutil.copy2(str(source), str(dest))
+                dest.chmod(0o755)
+                settings['statusLine'] = {'type': 'command', 'command': '~/.claude/statusline.sh'}
+                settings_path.write_text(json.dumps(settings, indent=2) + '\n')
+                print('installed')
+            else:
+                print('no-source')
+    except Exception as e:
+        print(f'error:{e}')
+" 2>/dev/null || true)
+
 # Determine repo map status message (check indexing status)
 INDEXING_STATUS=""
 if [[ -f "${DB_FILE}" ]]; then
@@ -215,6 +256,14 @@ if [[ "${MCP_PERMS_MISSING}" == "missing" ]]; then
     CONTEXT="${CONTEXT}\nAsk the user: \"context-daddy's MCP tools need permission approval on every use. Would you like me to auto-allow them? They're all read-only code search tools.\""
     CONTEXT="${CONTEXT}\nIf user agrees, run: uv run ${SCRIPT_DIR}/setup-permissions.py"
     CONTEXT="${CONTEXT}\nThen tell them to restart the session for changes to take effect."
+fi
+
+# Statusline integration guidance
+if [[ "${STATUSLINE_STATUS}" == "existing" ]]; then
+    CONTEXT="${CONTEXT}\n\n⚠️ **StatusLine: existing config detected**"
+    CONTEXT="${CONTEXT}\ncontext-daddy can show goal tracking in the status bar, but you already have a statusLine configured."
+    CONTEXT="${CONTEXT}\nIf the user wants goal info in their status bar, help them integrate it into their existing script."
+    CONTEXT="${CONTEXT}\nThe goal status snippet is in: ${SCRIPT_DIR}/statusline.sh (the goal tracking section)"
 fi
 
 # Output JSON with systemMessage for user display
