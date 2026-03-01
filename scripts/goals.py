@@ -89,7 +89,7 @@ def step_id_from_text(text: str) -> str:
     for long, short in [("annotation", "ann"), ("source", "src"),
                         ("implementation", "impl"), ("configuration", "config"),
                         ("integration", "integ"), ("network", "net"),
-                        ("location", "location")]:
+                        ("location", "loc")]:
         slug = slug.replace(long, short)
     # Trim to 3-4 words max
     parts = slug.split("-")
@@ -337,12 +337,18 @@ def _rebuild_plan_section(content: str, steps: list[dict]) -> str:
     """Replace the Plan section in goal markdown content with updated steps."""
     plan_lines = [_render_step_line(s) for s in steps]
     plan_block = "\n".join(plan_lines)
-    content = re.sub(
-        r"(## Plan\n\n)((?:- \[[ x]\].+\n?)+)",
-        rf"\g<1>{plan_block}\n",
-        content,
-    )
+    # Match plan section with 0 or more existing step lines
+    m = re.search(r"(## Plan\n\n)((?:- \[[ x]\].+\n?)*)", content)
+    if m:
+        content = content[:m.start()] + m.group(1) + plan_block + "\n" + content[m.end():]
     return content
+
+
+def _extract_section(content: str, heading: str) -> str:
+    """Safely extract text between ## heading and the next ## heading."""
+    m = re.search(rf"^## {re.escape(heading)}\s*\n\n?(.*?)(?=\n## |\Z)",
+                  content, re.MULTILINE | re.DOTALL)
+    return m.group(1).strip() if m else ""
 
 
 def _update_timestamp(content: str) -> str:
@@ -703,12 +709,11 @@ def goal_update_step(goal_ref: str, step_ref: str | int,
     content = _update_timestamp(content)
     atomic_write(path, content)
 
-    # Update .current-goal with new step ID
+    # Update .current-goal with new step ID (or clear step if all done)
     current_step = next((s for s in steps if s.get("current")), None)
     claude_dir = get_claude_dir(project_path)
-    if current_step:
-        atomic_write(claude_dir / ".current-goal",
-                     format_current_goal(path.stem, current_step.get("id")))
+    atomic_write(claude_dir / ".current-goal",
+                 format_current_goal(path.stem, current_step.get("id") if current_step else None))
 
     # Sync the project index
     update_index(project_path=project_path)
@@ -830,8 +835,11 @@ def goal_link_project(goal_ref: str, link_path: str,
 
     content = path.read_text()
 
-    if project_path in content:
-        return f"Project already linked: {project_path}"
+    # Check for exact project path match (not substring)
+    goal = parse_goal(path)
+    for p in goal.get("projects", []):
+        if Path(p["path"]).resolve() == Path(project_path).resolve():
+            return f"Project already linked: {project_path}"
 
     m = re.search(r"(## Projects\n\n)((?:- .+\n?)*)", content, re.MULTILINE)
     if m:
@@ -958,8 +966,7 @@ def goal_context(project_path: str | None = None) -> dict:
         "goal_id": goal_uuid,
         "slug": goal.get("slug", ""),
         "name": goal.get("title", "Untitled"),
-        "objective": goal.get("raw", "").split("## Objective\n\n")[1].split("\n\n## ")[0].strip()
-            if "## Objective" in goal.get("raw", "") else "",
+        "objective": _extract_section(goal.get("raw", ""), "Objective"),
         "role": role,
         "focused_step_id": focused_step.get("id") if focused_step else None,
         "focused_step_num": focused_idx + 1 if focused_step else None,

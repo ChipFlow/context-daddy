@@ -23,10 +23,10 @@ GOALS_DIR="${HOME}/.claude/goals"
 # Quick exit if no goal data
 if [[ ! -f "${CURRENT_GOAL_FILE}" ]]; then
     if [[ -f "${ACTIVE_GOALS_FILE}" && "${MODE}" == "context" ]]; then
-        GOAL_COUNT=$(python3 -c "
-import json
+        GOAL_COUNT=$(ACTIVE_GOALS_FILE="${ACTIVE_GOALS_FILE}" python3 -c "
+import json, os
 try:
-    index = json.load(open('${ACTIVE_GOALS_FILE}'))
+    index = json.load(open(os.environ['ACTIVE_GOALS_FILE']))
     print(len(index.get('goals', [])))
 except Exception:
     print(0)
@@ -39,148 +39,160 @@ except Exception:
 fi
 
 # Read goal context using python3 stdlib
-python3 -c "
+# Pass all paths via env vars to avoid shell injection
+export _GCH_MODE="${MODE}"
+export _GCH_PROJECT_ROOT="${PROJECT_ROOT}"
+export _GCH_CURRENT_GOAL_FILE="${CURRENT_GOAL_FILE}"
+export _GCH_GOALS_DIR="${GOALS_DIR}"
+
+python3 -c '
 import json
+import os
 import re
 from pathlib import Path
 
-mode = '${MODE}'
-project_root = '${PROJECT_ROOT}'
+mode = os.environ["_GCH_MODE"]
+project_root = os.environ["_GCH_PROJECT_ROOT"]
+current_goal_file = os.environ["_GCH_CURRENT_GOAL_FILE"]
+goals_dir = os.environ["_GCH_GOALS_DIR"]
 project_name = Path(project_root).name
 
 # Parse .current-goal
-raw = open('${CURRENT_GOAL_FILE}').read().strip()
-if ':' in raw:
-    goal_uuid, focused_step_id = raw.split(':', 1)
+raw = open(current_goal_file).read().strip()
+if ":" in raw:
+    goal_uuid, focused_step_id = raw.split(":", 1)
 else:
     goal_uuid, focused_step_id = raw, None
 
 # Find and read goal file
-goal_path = Path('${GOALS_DIR}') / f'{goal_uuid}.md'
+goal_path = Path(goals_dir) / f"{goal_uuid}.md"
 if not goal_path.exists():
     exit(0)
 
 content = goal_path.read_text()
 
 # Parse fields
-title = ''
-slug = ''
-m = re.search(r'^# Goal:\s*(.+)$', content, re.MULTILINE)
+title = ""
+slug = ""
+m = re.search(r"^# Goal:\s*(.+)$", content, re.MULTILINE)
 if m: title = m.group(1).strip()
-m = re.search(r'^\*\*Slug\*\*:\s*(.+)$', content, re.MULTILINE)
+m = re.search(r"^\*\*Slug\*\*:\s*(.+)$", content, re.MULTILINE)
 if m: slug = m.group(1).strip()
 
 # Parse objective
-objective = ''
-if '## Objective' in content:
-    objective = content.split('## Objective\n\n')[1].split('\n\n## ')[0].strip()
+objective = ""
+m = re.search(r"^## Objective\s*\n\n?(.*?)(?=\n## |\Z)", content, re.MULTILINE | re.DOTALL)
+if m: objective = m.group(1).strip()
 
 # Parse role for this project
-role = 'primary'
+role = "primary"
 in_projects = False
-for line in content.split('\n'):
-    if re.match(r'^## Projects', line):
+for line in content.split("\n"):
+    if re.match(r"^## Projects", line):
         in_projects = True; continue
-    if in_projects and re.match(r'^## ', line): break
+    if in_projects and re.match(r"^## ", line): break
     if in_projects and project_root in line:
-        m = re.match(r'^- .+\((\w+)\)', line)
+        m = re.match(r"^- .+\((\w+)\)", line)
         if m: role = m.group(1)
 
 # Parse steps
 steps = []
 in_plan = False
-for line in content.split('\n'):
-    if re.match(r'^## Plan', line):
+for line in content.split("\n"):
+    if re.match(r"^## Plan", line):
         in_plan = True; continue
-    if in_plan and re.match(r'^## ', line): break
+    if in_plan and re.match(r"^## ", line): break
     if in_plan:
-        m = re.match(r'^- \[([ x])\]\s*(.+)$', line)
+        m = re.match(r"^- \[([ x])\]\s*(.+)$", line)
         if m:
             text = m.group(2).strip()
-            is_current = '← current' in text
-            text_clean = re.sub(r'\s*← current\s*$', '', text)
-            sid_match = re.match(r'^\[([a-z0-9-]+)\]\s*(.+)$', text_clean)
+            is_current = "\u2190 current" in text
+            text_clean = re.sub(r"\s*\u2190 current\s*$", "", text)
+            sid_match = re.match(r"^\[([a-z0-9-]+)\]\s*(.+)$", text_clean)
             sid = sid_match.group(1) if sid_match else None
             desc = sid_match.group(2) if sid_match else text_clean
-            steps.append({'id': sid, 'done': m.group(1) == 'x', 'text': desc, 'current': is_current})
+            steps.append({"id": sid, "done": m.group(1) == "x", "text": desc, "current": is_current})
 
 # Find focused step
 focused = None
 focused_idx = 0
 if focused_step_id:
     for i, s in enumerate(steps):
-        if s.get('id') == focused_step_id:
+        if s.get("id") == focused_step_id:
             focused = s; focused_idx = i; break
 if not focused:
     for i, s in enumerate(steps):
-        if s.get('current'):
+        if s.get("current"):
             focused = s; focused_idx = i; break
 
 total = len(steps)
-done = sum(1 for s in steps if s['done'])
+done = sum(1 for s in steps if s["done"])
 
-if mode == 'status':
+if mode == "status":
     # Short status line
-    step_info = f'({focused_idx + 1}/{total})' if focused else f'({done}/{total})'
-    print(f'Goal: {title} {step_info}')
+    step_info = f"({focused_idx + 1}/{total})" if focused else f"({done}/{total})"
+    print(f"Goal: {title} {step_info}")
     exit(0)
 
 # Full context mode
-slug_str = f' ({slug})' if slug else ''
+slug_str = f" ({slug})" if slug else ""
 lines = []
-lines.append(f'🎯 **Active Goal**: {title}{slug_str}')
-lines.append(f'   Role: {role} | Step {focused_idx + 1}/{total}: {focused[\"text\"]}' if focused else f'   {done}/{total} steps completed')
+lines.append(f"\U0001f3af **Active Goal**: {title}{slug_str}")
+if focused:
+    lines.append(f"   Role: {role} | Step {focused_idx + 1}/{total}: {focused[\"text\"]}")
+else:
+    lines.append(f"   {done}/{total} steps completed")
 
 # Plan summary
-lines.append('')
+lines.append("")
 for i, s in enumerate(steps):
-    check = 'x' if s['done'] else ' '
-    sid = f'[{s[\"id\"]}] ' if s.get('id') else ''
-    marker = ' ← focused' if (focused and i == focused_idx) else ''
-    lines.append(f'   - [{check}] {sid}{s[\"text\"]}{marker}')
+    check = "x" if s["done"] else " "
+    sid = f"[{s[\"id\"]}] " if s.get("id") else ""
+    marker = " \u2190 focused" if (focused and i == focused_idx) else ""
+    lines.append(f"   - [{check}] {sid}{s[\"text\"]}{marker}")
 
 # Recent activity filtered to this project
 in_activity = False
 activity = []
-for line in content.split('\n'):
-    if re.match(r'^## Recent Activity', line):
+for line in content.split("\n"):
+    if re.match(r"^## Recent Activity", line):
         in_activity = True; continue
-    if in_activity and re.match(r'^## ', line): break
-    if in_activity and line.startswith('- ') and f'({project_name})' in line:
-        activity.append(line.lstrip('- '))
+    if in_activity and re.match(r"^## ", line): break
+    if in_activity and line.startswith("- ") and f"({project_name})" in line:
+        activity.append(line.lstrip("- "))
 
 if activity:
-    lines.append('')
-    lines.append('   Recent activity (this project):')
+    lines.append("")
+    lines.append("   Recent activity (this project):")
     for a in activity[:3]:
-        lines.append(f'   - {a}')
+        lines.append(f"   - {a}")
 
 # Recent learnings (last entry)
 in_learnings = False
 learnings = []
 current_learning = []
-for line in content.split('\n'):
-    if re.match(r'^## Approaches & Learnings', line):
+for line in content.split("\n"):
+    if re.match(r"^## Approaches & Learnings", line):
         in_learnings = True; continue
-    if in_learnings and re.match(r'^## ', line): break
+    if in_learnings and re.match(r"^## ", line): break
     if in_learnings:
-        if line.startswith('### '):
+        if line.startswith("### "):
             if current_learning:
-                learnings.append('\n'.join(current_learning))
+                learnings.append("\n".join(current_learning))
             current_learning = [line]
         elif in_learnings and current_learning:
             current_learning.append(line)
 if current_learning:
-    learnings.append('\n'.join(current_learning))
+    learnings.append("\n".join(current_learning))
 
 if learnings:
     last = learnings[-1].strip()
     if last:
-        lines.append('')
-        lines.append(f'   Last learning: {last[:200]}')
+        lines.append("")
+        lines.append(f"   Last learning: {last[:200]}")
 
-lines.append(f'   Full goal: ~/.claude/goals/{goal_uuid}.md')
-lines.append(f'   Commands: /context-daddy:goal (manage) | /context-daddy:goal-done (complete step) | /context-daddy:goal-focus (change step)')
+lines.append(f"   Full goal: ~/.claude/goals/{goal_uuid}.md")
+lines.append("   Commands: /context-daddy:goal (manage) | /context-daddy:goal-done (complete step) | /context-daddy:goal-focus (change step)")
 
-print('\n'.join(lines))
-" 2>/dev/null || true
+print("\n".join(lines))
+' 2>/dev/null || true

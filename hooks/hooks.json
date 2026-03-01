@@ -93,6 +93,15 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/detect-project-switch.sh"
           }
         ]
+      },
+      {
+        "matcher": "mcp__plugin_context-daddy_goals__goal_create|mcp__plugin_context-daddy_goals__goal_switch|mcp__plugin_context-daddy_goals__goal_focus|mcp__plugin_context-daddy_goals__goal_update_step|mcp__plugin_context-daddy_goals__goal_unset|mcp__plugin_context-daddy_goals__goal_archive",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/goals-post-tool.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [
