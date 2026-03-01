@@ -68,6 +68,27 @@ Example:
 tail -f .claude/logs/repo-map-server.log
 ```
 
+## Goals MCP Server
+
+The goals MCP server (`servers/goals-server.py`) provides 11 tools for goal management. It imports pure functions from `scripts/goals.py`.
+
+- **Logs**: `.claude/logs/goals-server.log` (1MB rotation, 3 backups)
+- **Storage**: Goals in `~/.claude/goals/<uuid>.md`, project index in `.claude/active-goals.json`
+- **Format v2**: Goals have slugs, steps have IDs (`[step-id]` prefix), `.current-goal` is `UUID:step-id`
+- **PostToolUse hook**: `hooks/goals-post-tool.sh` shows transient status after goal changes
+
+```bash
+# Test MCP server directly
+uv run servers/goals-server.py
+
+# Test goals CLI
+uv run scripts/goals.py list --all
+uv run scripts/goals.py context
+
+# Run goal tests
+uv run tests/test_goals.py
+```
+
 ## Automatic Narrative Updates
 
 The narrative and learnings are updated automatically by spawning a separate `claude -p` instance (no API key needed):

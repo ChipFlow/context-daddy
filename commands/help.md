@@ -174,23 +174,53 @@ Track multi-session, multi-project objectives that persist across sessions.
 - `/context-daddy:goal` - List, switch, or archive goals
 - `/context-daddy:goal-new` - Create a new goal with guided setup
 - `/context-daddy:goal-done` - Complete the current step and advance
+- `/context-daddy:goal-focus` - Set which step you're working on
+
+**MCP Tools (v0.14.1+):**
+
+Goals are managed via MCP tools (no Bash noise). All tools are under `mcp__plugin_context-daddy_goals__`:
+
+| Tool | Purpose |
+|------|---------|
+| `goal_create` | Create a new goal |
+| `goal_list` | List goals (optionally all projects) |
+| `goal_show` | Show goal details |
+| `goal_switch` | Set active goal |
+| `goal_unset` | Remove current goal marker |
+| `goal_focus` | Set focused step by step ID |
+| `goal_update_step` | Complete or advance steps |
+| `goal_add_learning` | Record an insight |
+| `goal_add_step` | Insert a plan step |
+| `goal_link_project` | Link a project to a goal |
+| `goal_archive` | Archive a finished goal |
+
+**Key concepts (v0.14.1):**
+- **Slugs**: Goals have human-readable slugs (e.g., `goal-tracking-functionality`) auto-generated from the title. Use slugs or UUIDs interchangeably.
+- **Step IDs**: Each plan step has a text ID (e.g., `[fix-review]`) auto-generated from the description. Steps are referenced by ID, not position number.
+- **Focus**: Set which step you're working on with `goal_focus`. This appears in session context, subagent context, and status messages.
+- **Project-scoped context**: Session startup shows the active goal, focused step, recent activity filtered to the current project, and recent learnings.
 
 **How it works:**
 - Goals are stored globally in `~/.claude/goals/` (survive across projects)
 - Each project has an index (`.claude/active-goals.json`) for fast startup
 - The active goal appears in session startup, post-compaction context, and subagent context
 - Commits are automatically tracked in the active goal's Recent Activity
+- PostToolUse hook shows updated status after goal changes
 
 **CLI (direct script usage):**
 ```bash
 uv run scripts/goals.py create "Title" "Objective"
 uv run scripts/goals.py list [--all]
-uv run scripts/goals.py show [<id>]
-uv run scripts/goals.py switch <id>
-uv run scripts/goals.py update-step <id> <step> --complete
+uv run scripts/goals.py show [<id-or-slug>]
+uv run scripts/goals.py switch <id-or-slug>
+uv run scripts/goals.py focus <step-id> [goal-id]
+uv run scripts/goals.py update-step <id> <step-id> --complete
 uv run scripts/goals.py add-learning <id> "text"
+uv run scripts/goals.py add-step <id> "description" [--id custom-id] [--after step-id]
 uv run scripts/goals.py archive <id>
 uv run scripts/goals.py sync
+uv run scripts/goals.py migrate  # Upgrade v1 goals to v2 format
+uv run scripts/goals.py context  # Show project-scoped context as JSON
 ```
 
 ## Troubleshooting

@@ -75,6 +75,19 @@ Not changelogs. **Stories**:
 
 Written in "we" voice. Opinionated. Updated after context compaction.
 
+### 🎯 Cross-Session Goals
+
+Track multi-session objectives that persist across sessions and projects:
+
+```
+/context-daddy:goal-new    → Guided goal creation with plan steps
+/context-daddy:goal-done   → Complete current step, advance to next
+/context-daddy:goal-focus  → Set which step you're working on
+/context-daddy:goal        → List, switch, or archive goals
+```
+
+Goals have human-readable slugs and step IDs. The active goal and focused step appear automatically in every session's context.
+
 ### 🧠 Learnings
 
 Hard-won insights that persist:
@@ -93,6 +106,10 @@ Hard-won insights that persist:
 | `/context-daddy:scan` | Regenerate project manifest |
 | `/context-daddy:status` | Indexing status |
 | `/context-daddy:learn` | Manage learnings |
+| `/context-daddy:goal-new` | Create a new goal |
+| `/context-daddy:goal` | Manage goals |
+| `/context-daddy:goal-done` | Complete current step |
+| `/context-daddy:goal-focus` | Set focused step |
 | `/context-daddy:help` | MCP tools guide |
 
 ## How It Works
@@ -113,7 +130,12 @@ Hard-won insights that persist:
 ├── project-manifest.json  # Build system, languages
 ├── repo-map.db            # Symbol index
 ├── learnings.md           # Your insights
-└── logs/repo-map-server.log
+├── active-goals.json      # Goal index for this project
+├── .current-goal          # Active goal reference
+└── logs/
+    ├── repo-map-server.log
+    └── goals-server.log
+~/.claude/goals/           # Goal files (global)
 ```
 
 ## Requirements
