@@ -5,6 +5,39 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-03-01
+
+### Added
+- **Goals MCP server** - 11 tools for goal management via MCP (no Bash noise)
+  - `goal_create`, `goal_list`, `goal_show`, `goal_switch`, `goal_unset`
+  - `goal_focus`, `goal_update_step`, `goal_add_learning`, `goal_add_step`
+  - `goal_link_project`, `goal_archive`
+- **Step IDs** - Human-readable IDs auto-generated from step descriptions (e.g., `[fix-review]`)
+- **Goal slugs** - Human-readable aliases auto-generated from titles (e.g., `goal-tracking-functionality`)
+- **Step focus** - `/context-daddy:goal-focus` skill to set which step you're working on
+- **Project-scoped context** - Session startup shows active goal, focused step, filtered activity, and recent learnings
+- **PostToolUse hook** - Transient status update after goal changes
+- **Storage format v2** - Goals have slugs, steps have IDs, `.current-goal` format is `UUID:step-id`
+- **Migration** - `goals.py migrate` upgrades v1 goals to v2 in-place
+- **24 goal tests** - Comprehensive test coverage including focus, context, slugs, migration, backwards compat
+
+### Fixed
+- Empty plan section rebuild (regex now matches 0+ steps)
+- `goal_context` IndexError on malformed objectives
+- Stale `.current-goal` when all steps completed
+- Shell injection in goal-context-helper.sh (paths via env vars)
+- Substring match for duplicate project detection
+
+## [0.14.0] - 2026-03-01
+
+### Added
+- **Cross-session goal tracking** - Track multi-session objectives that persist across sessions and projects
+  - Goals stored globally in `~/.claude/goals/`
+  - Per-project index in `.claude/active-goals.json`
+  - Active goal shown in session startup, post-compaction, and subagent context
+  - Commits auto-tracked in goal's Recent Activity
+- **Goal skill commands** - `/context-daddy:goal`, `/context-daddy:goal-new`, `/context-daddy:goal-done`
+
 ## [0.9.6] - 2026-01-16
 
 ### Added
