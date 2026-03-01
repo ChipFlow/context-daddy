@@ -197,5 +197,12 @@ if learnings:
 lines.append(f"   Full goal: ~/.claude/goals/{goal_uuid}.md")
 lines.append("   Commands: /context-daddy:goal (manage) | /context-daddy:goal-done (complete step) | /context-daddy:goal-focus (change step)")
 
+# Behavioral guidance
+lines.append("")
+lines.append("   **IMPORTANT - Goal-driven workflow:**")
+lines.append("   - When the user asks for a large multi-step task, use the goal system (goal_create + goal_add_step) instead of EnterPlanMode.")
+lines.append("   - After completing a step, use goal_update_step to mark it done, then CONTINUE to the next step without waiting to be asked.")
+lines.append("   - Only stop between steps if you need user input or clarification.")
+
 print("\n".join(lines))
 ' 2>/dev/null || true

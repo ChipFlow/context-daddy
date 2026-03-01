@@ -95,8 +95,7 @@ INSTRUCTIONS="${INSTRUCTIONS}
 1. **Read ${CLAUDE_DIR}/CLAUDE.md** (if exists) - Project rules
 2. **Read ${CLAUDE_DIR}/learnings.md** (if exists) - Recent discoveries
 3. **Update narrative** (if significant learning): Run \`/context-daddy:refresh\`
-
-Then continue with the current task."
+4. **Check the active goal** above - identify the current step and continue working on it. Do NOT wait to be asked."
 
 # Escape for JSON
 INSTRUCTIONS_ESCAPED=$(echo -n "$INSTRUCTIONS" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | sed 's/^"//;s/"$//')
