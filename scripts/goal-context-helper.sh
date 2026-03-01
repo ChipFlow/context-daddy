@@ -126,7 +126,7 @@ if not focused:
             focused = s; focused_idx = i; break
 
 total = len(steps)
-done = sum(1 for s in steps if s["done"])
+done = sum(1 for s in steps if s.get("done"))
 
 if mode == "status":
     # Short status line
@@ -139,17 +139,20 @@ slug_str = f" ({slug})" if slug else ""
 lines = []
 lines.append(f"\U0001f3af **Active Goal**: {title}{slug_str}")
 if focused:
-    lines.append(f"   Role: {role} | Step {focused_idx + 1}/{total}: {focused[\"text\"]}")
+    ft = focused.get("text", "")
+    lines.append(f"   Role: {role} | Step {focused_idx + 1}/{total}: {ft}")
 else:
     lines.append(f"   {done}/{total} steps completed")
 
 # Plan summary
 lines.append("")
 for i, s in enumerate(steps):
-    check = "x" if s["done"] else " "
-    sid = f"[{s[\"id\"]}] " if s.get("id") else ""
+    check = "x" if s.get("done") else " "
+    step_id = s.get("id", "")
+    step_text = s.get("text", "")
+    sid = f"[{step_id}] " if step_id else ""
     marker = " \u2190 focused" if (focused and i == focused_idx) else ""
-    lines.append(f"   - [{check}] {sid}{s[\"text\"]}{marker}")
+    lines.append(f"   - [{check}] {sid}{step_text}{marker}")
 
 # Recent activity filtered to this project
 in_activity = False
