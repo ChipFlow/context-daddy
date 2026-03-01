@@ -568,6 +568,297 @@ def test_show_current():
         return True
 
 
+def test_goal_focus():
+    """Focus command updates .current-goal with step ID."""
+    print("\n" + "=" * 60)
+    print("TEST 16: Goal focus updates .current-goal with step ID")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home = tmpdir
+        project = Path(tmpdir) / "myproject"
+        project.mkdir()
+        (project / ".claude").mkdir()
+
+        r = run_goals(["create", "Focus Test", "Test focus"], home, str(project))
+        goal_id = extract_goal_id(r.stdout)
+
+        # Add steps
+        run_goals(["add-step", goal_id, "Implement feature"], home, str(project))
+        run_goals(["add-step", goal_id, "Write tests"], home, str(project))
+
+        # Focus on second added step (should be 'implement-feature' or similar)
+        # First, read the goal to find step IDs
+        show_result = run_goals(["show", goal_id], home, str(project))
+        content = show_result.stdout
+
+        # Extract step IDs from the output
+        step_ids = []
+        for line in content.split("\n"):
+            import re
+            m = re.match(r"^- \[[ x]\]\s*\[([a-z0-9-]+)\]", line)
+            if m:
+                step_ids.append(m.group(1))
+
+        assert len(step_ids) >= 2, f"Expected at least 2 step IDs, got {step_ids}"
+
+        # Focus on the second step
+        target_step = step_ids[1]
+        result = run_goals(["focus", target_step], home, str(project))
+        assert result.returncode == 0, f"Focus failed: {result.stderr}"
+        assert target_step in result.stdout, f"Step ID not in output: {result.stdout}"
+
+        # Verify .current-goal format is UUID:step-id
+        raw = get_current_goal_raw(project / ".claude")
+        assert ":" in raw, f"Expected UUID:step-id format, got: {raw}"
+        parts = raw.split(":")
+        assert parts[0] == goal_id, f"UUID mismatch: {parts[0]} vs {goal_id}"
+        assert parts[1] == target_step, f"Step ID mismatch: {parts[1]} vs {target_step}"
+
+        print("✅ PASS: Focus updates .current-goal with step ID")
+        return True
+
+
+def test_goal_context():
+    """Goal context returns project-filtered data."""
+    print("\n" + "=" * 60)
+    print("TEST 17: Goal context returns project-scoped data")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home = tmpdir
+        project = Path(tmpdir) / "myproject"
+        project.mkdir()
+        (project / ".claude").mkdir()
+
+        r = run_goals(["create", "Context Test", "Test context output"], home, str(project))
+        goal_id = extract_goal_id(r.stdout)
+
+        run_goals(["add-step", goal_id, "First step"], home, str(project))
+        run_goals(["add-learning", goal_id, "Learned something important"], home, str(project))
+
+        # Run context command
+        result = run_goals(["context"], home, str(project))
+        assert result.returncode == 0, f"Context failed: {result.stderr}"
+
+        ctx = json.loads(result.stdout)
+        assert ctx.get("goal_id") == goal_id, f"Goal ID mismatch: {ctx.get('goal_id')}"
+        assert ctx.get("name") == "Context Test", f"Name mismatch: {ctx.get('name')}"
+        assert ctx.get("slug") == "context-test", f"Slug mismatch: {ctx.get('slug')}"
+        assert ctx.get("total_steps") >= 2, f"Expected >= 2 steps, got {ctx.get('total_steps')}"
+        assert ctx.get("plan_summary"), "Plan summary should not be empty"
+        assert "Learned something" in ctx.get("recent_learnings", ""), \
+            f"Learning not in context: {ctx.get('recent_learnings')}"
+
+        print("✅ PASS: Context returns project-scoped data")
+        return True
+
+
+def test_backwards_compat_bare_uuid():
+    """Bare UUID in .current-goal (v1 format) still works."""
+    print("\n" + "=" * 60)
+    print("TEST 18: Backwards compat - bare UUID in .current-goal")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home = tmpdir
+        project = Path(tmpdir) / "myproject"
+        project.mkdir()
+        (project / ".claude").mkdir()
+
+        r = run_goals(["create", "Compat Test", "Test backwards compat"], home, str(project))
+        goal_id = extract_goal_id(r.stdout)
+
+        # Manually write bare UUID (v1 format) to .current-goal
+        (project / ".claude" / ".current-goal").write_text(goal_id + "\n")
+
+        # Show should still work
+        result = run_goals(["show"], home, str(project))
+        assert result.returncode == 0, f"Show failed with bare UUID: {result.stderr}"
+        assert "Compat Test" in result.stdout, "Goal not shown with bare UUID"
+
+        # Context should still work
+        result = run_goals(["context"], home, str(project))
+        assert result.returncode == 0, f"Context failed with bare UUID: {result.stderr}"
+        ctx = json.loads(result.stdout)
+        assert ctx.get("goal_id") == goal_id, "Context should work with bare UUID"
+
+        print("✅ PASS: Bare UUID backwards compat works")
+        return True
+
+
+def test_slug_lookup():
+    """Goals can be found by slug."""
+    print("\n" + "=" * 60)
+    print("TEST 19: Slug-based goal lookup")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home = tmpdir
+        project = Path(tmpdir) / "myproject"
+        project.mkdir()
+        (project / ".claude").mkdir()
+
+        r = run_goals(["create", "Slug Lookup Test", "Test slug-based lookup"], home, str(project))
+        goal_id = extract_goal_id(r.stdout)
+
+        # Show by slug
+        result = run_goals(["show", "slug-lookup-test"], home, str(project))
+        assert result.returncode == 0, f"Show by slug failed: {result.stderr}"
+        assert "Slug Lookup Test" in result.stdout, "Goal not found by slug"
+
+        # Switch by slug
+        result = run_goals(["switch", "slug-lookup-test"], home, str(project))
+        assert result.returncode == 0, f"Switch by slug failed: {result.stderr}"
+
+        print("✅ PASS: Slug-based lookup works")
+        return True
+
+
+def test_step_ids_auto_generated():
+    """Step IDs are auto-generated from description."""
+    print("\n" + "=" * 60)
+    print("TEST 20: Step IDs auto-generated")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home = tmpdir
+        project = Path(tmpdir) / "myproject"
+        project.mkdir()
+        (project / ".claude").mkdir()
+
+        r = run_goals(["create", "Step ID Test", "Test step IDs"], home, str(project))
+        goal_id = extract_goal_id(r.stdout)
+
+        run_goals(["add-step", goal_id, "Add source annotations"], home, str(project))
+        run_goals(["add-step", goal_id, "Write integration tests"], home, str(project))
+
+        # Read goal file and verify step IDs exist
+        goal_file = Path(home) / ".claude" / "goals" / f"{goal_id}.md"
+        content = goal_file.read_text()
+
+        import re
+        step_id_matches = re.findall(r"\[([a-z0-9-]+)\]", content)
+        # Filter to only step IDs (inside checkbox lines)
+        step_lines = [l for l in content.split("\n") if l.startswith("- [")]
+        step_ids = []
+        for line in step_lines:
+            m = re.search(r"\[([a-z0-9-]+)\]\s", line)
+            if m:
+                step_ids.append(m.group(1))
+
+        assert len(step_ids) >= 3, f"Expected at least 3 step IDs, got {step_ids}"
+        assert "define-plan" in step_ids, f"Default step ID 'define-plan' not found: {step_ids}"
+
+        # All IDs should be unique
+        assert len(step_ids) == len(set(step_ids)), f"Step IDs not unique: {step_ids}"
+
+        print(f"✅ PASS: Step IDs auto-generated: {step_ids}")
+        return True
+
+
+def test_update_step_by_id():
+    """Update step by step ID (not just number)."""
+    print("\n" + "=" * 60)
+    print("TEST 21: Update step by step ID")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home = tmpdir
+        project = Path(tmpdir) / "myproject"
+        project.mkdir()
+        (project / ".claude").mkdir()
+
+        r = run_goals(["create", "Step By ID", "Test updating by ID"], home, str(project))
+        goal_id = extract_goal_id(r.stdout)
+
+        run_goals(["add-step", goal_id, "Implement feature"], home, str(project))
+
+        # Complete step by ID
+        result = run_goals(["update-step", goal_id, "define-plan", "--complete"], home, str(project))
+        assert result.returncode == 0, f"Update by ID failed: {result.stderr}"
+
+        # Verify step is completed
+        goal_file = Path(home) / ".claude" / "goals" / f"{goal_id}.md"
+        content = goal_file.read_text()
+        assert "[x] [define-plan]" in content, "Step should be marked complete"
+
+        print("✅ PASS: Update step by ID works")
+        return True
+
+
+def test_migrate_v1_goal():
+    """Migration adds slug and step IDs to v1 goals."""
+    print("\n" + "=" * 60)
+    print("TEST 22: Migrate v1 goal to v2")
+    print("=" * 60)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home = tmpdir
+        goals_dir = Path(home) / ".claude" / "goals"
+        goals_dir.mkdir(parents=True)
+
+        # Create a v1 goal file directly (no Slug field, no step IDs)
+        v1_content = """# Goal: Legacy Goal
+
+**ID**: deadbeef
+**Status**: active
+**Created**: 2026-01-01
+**Updated**: 2026-01-15
+
+## Objective
+
+A legacy goal from before v2.
+
+## Projects
+
+- /tmp/myproject (primary)
+
+## Plan
+
+- [x] First step done
+- [ ] Second step in progress  ← current
+- [ ] Third step pending
+
+## Approaches & Learnings
+
+### 2026-01-10
+Found a good approach.
+
+## Recent Activity
+
+- `abc1234` (myproject) 2026-01-15: Fixed something
+"""
+        goal_file = goals_dir / "deadbeef.md"
+        goal_file.write_text(v1_content)
+
+        # Run migrate
+        env = {**os.environ, "HOME": home}
+        result = subprocess.run(
+            ["uv", "run", str(GOALS_SCRIPT), "migrate"],
+            capture_output=True, text=True, env=env, timeout=30,
+        )
+        assert result.returncode == 0, f"Migrate failed: {result.stderr}"
+        assert "Migrated" in result.stdout, f"Expected migration message: {result.stdout}"
+
+        # Verify v2 format
+        content = goal_file.read_text()
+        assert "**Slug**: legacy-goal" in content, f"Slug not added: {content[:200]}"
+
+        # Verify step IDs were added
+        import re
+        step_lines = [l for l in content.split("\n") if l.startswith("- [")]
+        for line in step_lines:
+            assert re.search(r"\[[a-z0-9-]+\]", line), f"Step missing ID: {line}"
+
+        # Verify done/current markers preserved
+        assert "[x]" in content, "Completed step should be preserved"
+        assert "← current" in content, "Current marker should be preserved"
+
+        print("✅ PASS: V1 goal migrated to v2 with slug and step IDs")
+        return True
+
+
 if __name__ == "__main__":
     tests = [
         test_script_exists,
@@ -585,6 +876,13 @@ if __name__ == "__main__":
         test_sync_idempotent,
         test_partial_uuid,
         test_show_current,
+        test_goal_focus,
+        test_goal_context,
+        test_backwards_compat_bare_uuid,
+        test_slug_lookup,
+        test_step_ids_auto_generated,
+        test_update_step_by_id,
+        test_migrate_v1_goal,
     ]
 
     print("\n" + "=" * 60)
