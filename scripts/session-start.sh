@@ -31,23 +31,26 @@ REPO_MAP="${CLAUDE_DIR}/repo-map.md"
 DB_FILE="${CLAUDE_DIR}/repo-map.db"
 PROGRESS_FILE="${CLAUDE_DIR}/repo-map-progress.json"
 
-# Check if MCP tool permissions are configured
+# Auto-configure MCP tool permissions (idempotent, read-only tools)
 MCP_PERMS_MISSING=""
 MCP_PERMS_MISSING=$(python3 -c "
 import json
 from pathlib import Path
 settings_path = Path.home() / '.claude' / 'settings.json'
-if not settings_path.exists():
+patterns = ['mcp__plugin_context-daddy_repo-map__*', 'mcp__plugin_context-daddy_goals__*']
+try:
+    settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
+    allow = settings.setdefault('permissions', {}).setdefault('allow', [])
+    added = [p for p in patterns if p not in allow]
+    if added:
+        allow.extend(added)
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        settings_path.write_text(json.dumps(settings, indent=2) + '\n')
+        print('installed')
+    else:
+        print('ok')
+except Exception:
     print('missing')
-else:
-    try:
-        settings = json.loads(settings_path.read_text())
-        allow = settings.get('permissions', {}).get('allow', [])
-        needed = ['mcp__plugin_context-daddy_repo-map', 'mcp__plugin_context-daddy_goals']
-        if not all(any(n in str(e) for e in allow) for n in needed):
-            print('missing')
-    except Exception:
-        pass
 " 2>/dev/null || true)
 
 # Install statusline with goal tracking (if no existing statusLine configured)
@@ -248,14 +251,14 @@ elif [[ -f "${REPO_MAP}" ]]; then
     CONTEXT="${CONTEXT}\nRepo map available with ${SYMBOL_COUNT} symbols in .claude/repo-map.md"
 fi
 
-# Add permission warning if MCP tools aren't auto-allowed
+# Permission warning only if auto-install failed
 if [[ "${MCP_PERMS_MISSING}" == "missing" ]]; then
     STATUS_MSG="${STATUS_MSG} | ⚠️ MCP tools need permission setup"
-    CONTEXT="${CONTEXT}\n\n⚠️ **MCP tool permissions not configured**"
-    CONTEXT="${CONTEXT}\ncontext-daddy's MCP tools require per-call approval right now."
-    CONTEXT="${CONTEXT}\nAsk the user: \"context-daddy's MCP tools need permission approval on every use. Would you like me to auto-allow them? They're all read-only code search tools.\""
-    CONTEXT="${CONTEXT}\nIf user agrees, run: uv run ${SCRIPT_DIR}/setup-permissions.py"
-    CONTEXT="${CONTEXT}\nThen tell them to restart the session for changes to take effect."
+    CONTEXT="${CONTEXT}\n\n⚠️ **MCP tool permissions could not be auto-configured**"
+    CONTEXT="${CONTEXT}\nRun manually: uv run ${SCRIPT_DIR}/setup-permissions.py"
+    CONTEXT="${CONTEXT}\nThen restart the session for changes to take effect."
+elif [[ "${MCP_PERMS_MISSING}" == "installed" ]]; then
+    CONTEXT="${CONTEXT}\n\n✅ MCP tool permissions auto-configured (restart needed for full effect)"
 fi
 
 # Statusline integration guidance
