@@ -21,6 +21,11 @@ if [[ -f "${SCRIPT_DIR}/update-context.sh" ]]; then
     bash "${SCRIPT_DIR}/update-context.sh" --background --update 2>/dev/null &
 fi
 
+# Sync goal index before compaction
+if [[ -f "${CLAUDE_DIR}/.current-goal" ]]; then
+    uv run "${SCRIPT_DIR}/goals.py" sync --project "${PROJECT_ROOT}" 2>/dev/null || true
+fi
+
 echo "=== PreCompact Hook (context-daddy) ==="
 echo ""
 echo "Narrative and learnings update started in background."

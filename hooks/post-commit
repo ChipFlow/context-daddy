@@ -48,4 +48,18 @@ fi
     bash "${CONTEXT_DADDY_SCRIPT}" --background --update) &>/dev/null &
 disown 2>/dev/null || true
 
+# Track commit in active goal (lightweight, no API calls)
+PROJECT_TOP="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
+CURRENT_GOAL_FILE="${PROJECT_TOP}/.claude/.current-goal"
+if [[ -f "${CURRENT_GOAL_FILE}" ]]; then
+    GOAL_UUID=$(cat "${CURRENT_GOAL_FILE}" | tr -d '[:space:]')
+    COMMIT_HASH=$(git rev-parse --short HEAD)
+    COMMIT_MSG=$(git log -1 --format=%s)
+    GOALS_SCRIPT="$(dirname "${CONTEXT_DADDY_SCRIPT}")/goals.py"
+    if [[ -f "${GOALS_SCRIPT}" ]]; then
+        (cd "${PROJECT_TOP}" && uv run "${GOALS_SCRIPT}" add-commit "${GOAL_UUID}" "${COMMIT_HASH}" "${COMMIT_MSG}") &>/dev/null &
+        disown 2>/dev/null || true
+    fi
+fi
+
 exit 0

@@ -166,6 +166,33 @@ cd /path/to/project-B
 
 Each project maintains its own `.claude/repo-map.db` index.
 
+## Cross-Session Goals (v0.14.0+)
+
+Track multi-session, multi-project objectives that persist across sessions.
+
+**Commands:**
+- `/context-daddy:goal` - List, switch, or archive goals
+- `/context-daddy:goal-new` - Create a new goal with guided setup
+- `/context-daddy:goal-done` - Complete the current step and advance
+
+**How it works:**
+- Goals are stored globally in `~/.claude/goals/` (survive across projects)
+- Each project has an index (`.claude/active-goals.json`) for fast startup
+- The active goal appears in session startup, post-compaction context, and subagent context
+- Commits are automatically tracked in the active goal's Recent Activity
+
+**CLI (direct script usage):**
+```bash
+uv run scripts/goals.py create "Title" "Objective"
+uv run scripts/goals.py list [--all]
+uv run scripts/goals.py show [<id>]
+uv run scripts/goals.py switch <id>
+uv run scripts/goals.py update-step <id> <step> --complete
+uv run scripts/goals.py add-learning <id> "text"
+uv run scripts/goals.py archive <id>
+uv run scripts/goals.py sync
+```
+
 ## Troubleshooting
 
 **If MCP tools aren't working:**
