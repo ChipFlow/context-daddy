@@ -43,7 +43,8 @@ else:
     try:
         settings = json.loads(settings_path.read_text())
         allow = settings.get('permissions', {}).get('allow', [])
-        if not any('mcp__plugin_context-daddy_repo-map' in str(e) for e in allow):
+        needed = ['mcp__plugin_context-daddy_repo-map', 'mcp__plugin_context-daddy_goals']
+        if not all(any(n in str(e) for e in allow) for n in needed):
             print('missing')
     except Exception:
         pass
@@ -168,48 +169,13 @@ if [[ -f "${LEARNINGS}" ]]; then
     fi
 fi
 
-# Goal context injection (fast path: reads pre-built JSON index with python3)
-CURRENT_GOAL_FILE="${CLAUDE_DIR}/.current-goal"
-ACTIVE_GOALS_FILE="${CLAUDE_DIR}/active-goals.json"
-
-if [[ -f "${CURRENT_GOAL_FILE}" && -f "${ACTIVE_GOALS_FILE}" ]]; then
-    GOAL_INFO=$(python3 -c "
-import json, sys
-try:
-    goal_id = open('${CURRENT_GOAL_FILE}').read().strip()
-    index = json.load(open('${ACTIVE_GOALS_FILE}'))
-    for g in index.get('goals', []):
-        if g['id'] == goal_id:
-            print(f\"{g['name']}|{g['current_step']}|{g['total_steps']}|{g.get('current_step_text', '')}\")
-            break
-except Exception:
-    pass
-" 2>/dev/null || true)
-
-    if [[ -n "${GOAL_INFO}" ]]; then
-        GOAL_NAME=$(echo "${GOAL_INFO}" | cut -d'|' -f1)
-        GOAL_STEP=$(echo "${GOAL_INFO}" | cut -d'|' -f2)
-        GOAL_TOTAL=$(echo "${GOAL_INFO}" | cut -d'|' -f3)
-        GOAL_STEP_TEXT=$(echo "${GOAL_INFO}" | cut -d'|' -f4)
-        GOAL_UUID=$(cat "${CURRENT_GOAL_FILE}" | tr -d '[:space:]')
-
-        STATUS_MSG="${STATUS_MSG} | Goal: ${GOAL_NAME} (${GOAL_STEP}/${GOAL_TOTAL})"
-        CONTEXT="${CONTEXT}\n\n🎯 **Active Goal**: ${GOAL_NAME} (step ${GOAL_STEP}/${GOAL_TOTAL})"
-        CONTEXT="${CONTEXT}\n   Current step: ${GOAL_STEP_TEXT}"
-        CONTEXT="${CONTEXT}\n   Goal file: ~/.claude/goals/${GOAL_UUID}.md"
-        CONTEXT="${CONTEXT}\n   Commands: /context-daddy:goal (manage) | /context-daddy:goal-done (complete step)"
-    fi
-elif [[ -f "${ACTIVE_GOALS_FILE}" ]]; then
-    GOAL_COUNT=$(python3 -c "
-import json
-try:
-    index = json.load(open('${ACTIVE_GOALS_FILE}'))
-    print(len(index.get('goals', [])))
-except Exception:
-    print(0)
-" 2>/dev/null || echo "0")
-    if [[ "${GOAL_COUNT}" -gt 0 ]]; then
-        CONTEXT="${CONTEXT}\n\n📋 ${GOAL_COUNT} active goal(s) linked to this project - run /context-daddy:goal to select one"
+# Goal context injection (project-scoped, reads goal files directly)
+GOAL_CONTEXT=$(bash "${SCRIPT_DIR}/goal-context-helper.sh" "${PROJECT_ROOT}" 2>/dev/null || true)
+if [[ -n "${GOAL_CONTEXT}" ]]; then
+    CONTEXT="${CONTEXT}\n\n${GOAL_CONTEXT}"
+    GOAL_STATUS=$(bash "${SCRIPT_DIR}/goal-context-helper.sh" --status "${PROJECT_ROOT}" 2>/dev/null || true)
+    if [[ -n "${GOAL_STATUS}" ]]; then
+        STATUS_MSG="${STATUS_MSG} | ${GOAL_STATUS}"
     fi
 fi
 

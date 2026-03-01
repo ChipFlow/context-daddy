@@ -16,29 +16,12 @@ if [[ -f "${CLAUDE_DIR}/narrative.md" ]]; then
     fi
 fi
 
-# Add active goal context
-CURRENT_GOAL_FILE="${CLAUDE_DIR}/.current-goal"
-ACTIVE_GOALS_FILE="${CLAUDE_DIR}/active-goals.json"
-if [[ -f "${CURRENT_GOAL_FILE}" && -f "${ACTIVE_GOALS_FILE}" ]]; then
-    GOAL_INFO=$(python3 -c "
-import json
-try:
-    goal_id = open('${CURRENT_GOAL_FILE}').read().strip()
-    index = json.load(open('${ACTIVE_GOALS_FILE}'))
-    for g in index.get('goals', []):
-        if g['id'] == goal_id:
-            print(f\"{g['name']}|{g['current_step']}|{g['total_steps']}|{g.get('current_step_text', '')}\")
-            break
-except Exception:
-    pass
-" 2>/dev/null || true)
-
-    if [[ -n "${GOAL_INFO}" ]]; then
-        GOAL_NAME=$(echo "${GOAL_INFO}" | cut -d'|' -f1)
-        GOAL_STEP_TEXT=$(echo "${GOAL_INFO}" | cut -d'|' -f4)
-        CONTEXT="${CONTEXT}
-🎯 Goal: ${GOAL_NAME} - Current step: ${GOAL_STEP_TEXT}"
-    fi
+# Add active goal context (project-scoped)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../scripts" && pwd)"
+GOAL_CONTEXT=$(bash "${SCRIPT_DIR}/goal-context-helper.sh" "${PWD}" 2>/dev/null || true)
+if [[ -n "${GOAL_CONTEXT}" ]]; then
+    CONTEXT="${CONTEXT}
+${GOAL_CONTEXT}"
 fi
 
 # Add MCP tools reminder

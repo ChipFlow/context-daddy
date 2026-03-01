@@ -1,6 +1,6 @@
 {
   "name": "context-daddy",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "Your codebase's context needs a responsible adult. Fast code exploration, living project narratives, and tribal knowledge that survives across sessions.",
   "author": {
     "name": "Robert Taylor"
@@ -11,6 +11,13 @@
     "repo-map": {
       "command": "uv",
       "args": ["run", "${CLAUDE_PLUGIN_ROOT}/servers/repo-map-server.py"],
+      "env": {
+        "PROJECT_ROOT": "${PWD}"
+      }
+    },
+    "goals": {
+      "command": "uv",
+      "args": ["run", "${CLAUDE_PLUGIN_ROOT}/servers/goals-server.py"],
       "env": {
         "PROJECT_ROOT": "${PWD}"
       }
