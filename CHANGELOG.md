@@ -5,6 +5,11 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.5] - 2026-03-02
+
+### Added
+- **Step reordering/removal instructions** - Goal skill and context helper now explain how to rearrange or delete plan steps by editing the goal file directly
+
 ## [0.14.4] - 2026-03-01
 
 ### Fixed
