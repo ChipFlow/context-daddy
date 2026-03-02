@@ -49,6 +49,15 @@ Based on the output, offer the user these options:
 - **Unset current goal** (stop tracking without archiving):
   - Use `goal_unset()`
 
+- **Reorder plan steps**: To move steps around:
+  1. Use `goal_show()` to see current plan
+  2. Read the goal file directly (path shown in output, e.g. `~/.claude/goals/<id>.md`)
+  3. Rearrange the `- [ ] [step-id] Description` lines in the `## Plan` section
+  4. Write the file back. Steps are identified by `[step-id]`, not position, so reordering is safe.
+  5. Use `goal_focus(step="<step-id>")` to set the current step if needed
+
+- **Remove a plan step**: Edit the goal file directly and delete the line
+
 ## Step 3: Execute User Choice
 
 Run the appropriate MCP tool based on the user's selection.

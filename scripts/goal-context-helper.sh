@@ -203,6 +203,7 @@ lines.append("   **IMPORTANT - Goal-driven workflow:**")
 lines.append("   - When the user asks for a large multi-step task, use the goal system (goal_create + goal_add_step) instead of EnterPlanMode.")
 lines.append("   - After completing a step, use goal_update_step to mark it done, then CONTINUE to the next step without waiting to be asked.")
 lines.append("   - Only stop between steps if you need user input or clarification.")
+lines.append("   - To reorder or remove steps: edit the goal file directly (rearrange/delete the `- [ ] [step-id]` lines). Step IDs, not positions, identify steps.")
 
 print("\n".join(lines))
 ' 2>/dev/null || true
