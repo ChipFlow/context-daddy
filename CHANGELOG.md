@@ -5,6 +5,11 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.6] - 2026-03-02
+
+### Added
+- **Plan-to-goal capture** - PostToolUse hook on ExitPlanMode detects approved plan steps and nudges Claude to add them as goal steps, ensuring plan work persists across sessions
+
 ## [0.14.5] - 2026-03-02
 
 ### Added

@@ -102,6 +102,15 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/goals-post-tool.sh"
           }
         ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/plan-capture.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [
