@@ -6,11 +6,14 @@ set -euo pipefail
 PROJECT_ROOT="${PWD}"
 CLAUDE_DIR="${PROJECT_ROOT}/.claude"
 
-# Kill all repo-map processes for this project
-PIDS=$(pgrep -f "map.py.*${PROJECT_ROOT}" 2>/dev/null || true)
-if [[ -n "${PIDS}" ]]; then
-    echo "${PIDS}" | xargs kill 2>/dev/null || true
-fi
+# Kill all context-daddy background processes for this project
+# (map.py indexing, update-context.sh agents)
+for pattern in "map.py.*${PROJECT_ROOT}" "update-context.sh.*${PROJECT_ROOT}" "update-context.*--project.*${PROJECT_ROOT}"; do
+    PIDS=$(pgrep -f "${pattern}" 2>/dev/null || true)
+    if [[ -n "${PIDS}" ]]; then
+        echo "${PIDS}" | xargs kill 2>/dev/null || true
+    fi
+done
 
 # Create marker for post-plan context injection
 # UserPromptSubmit will check for this and inject context if present

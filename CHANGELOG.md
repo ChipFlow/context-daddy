@@ -5,6 +5,13 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1] - 2026-03-04
+
+### Fixed
+- **Process guardian** - New background watcher kills MCP servers and indexers when parent Claude session exits (prevents orphaned processes from accumulating across sessions)
+- **Orphan cleanup on start** - Session start now detects and kills context-daddy processes reparented to init (ppid=1)
+- **SessionEnd cleanup** - `on-exit.sh` now also kills `update-context.sh` background agents
+
 ## [0.15.0] - 2026-03-04
 
 ### Added

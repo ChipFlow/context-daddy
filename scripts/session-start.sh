@@ -21,6 +21,45 @@ mkdir -p "${CLAUDE_DIR}"
 # Clear session-ended marker (normal session start, not post-plan resume)
 rm -f "${CLAUDE_DIR}/session-ended"
 
+# Clean up orphaned context-daddy processes from dead sessions.
+# MCP servers (repo-map-server, goals-server) and map.py survive if a
+# terminal is closed without SessionEnd firing. Kill any whose parent
+# claude process no longer exists (ppid=1 means reparented to init).
+{
+    for pid in $(pgrep -f "context-daddy.*servers/|context-daddy.*map\.py" 2>/dev/null || true); do
+        ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+        [ -z "$ppid" ] && continue
+        if [ "$ppid" = "1" ]; then
+            kill "$pid" 2>/dev/null || true
+        fi
+    done
+} 2>/dev/null || true
+
+# Spawn process guardian to watch for parent claude exit.
+# When the parent claude process dies (e.g. terminal closed), the guardian
+# kills all registered child processes (MCP servers, indexers, etc.)
+GUARDIAN_PIDFILE="${CLAUDE_DIR}/.guardian-pids"
+CLAUDE_PID="${PPID:-}"
+if [[ -n "${CLAUDE_PID}" ]] && [[ "${CLAUDE_PID}" != "1" ]]; then
+    # Kill any previous guardian for this project
+    if [[ -f "${CLAUDE_DIR}/.guardian-pid" ]]; then
+        kill "$(cat "${CLAUDE_DIR}/.guardian-pid")" 2>/dev/null || true
+    fi
+    rm -f "${GUARDIAN_PIDFILE}"
+    # Register current MCP server PIDs (spawned by Claude Code as children of $PPID)
+    for pid in $(pgrep -P "${CLAUDE_PID}" -f "context-daddy" 2>/dev/null || true); do
+        cmd=$(ps -o command= -p "$pid" 2>/dev/null | head -c 40)
+        echo "${pid}:${cmd}" >> "${GUARDIAN_PIDFILE}"
+    done
+    # Spawn guardian in background
+    nohup uv run "${SCRIPT_DIR}/process-guardian.py" \
+        --parent-pid "${CLAUDE_PID}" \
+        --pidfile "${GUARDIAN_PIDFILE}" \
+        > /dev/null 2>&1 &
+    echo "$!" > "${CLAUDE_DIR}/.guardian-pid"
+    disown
+fi
+
 # Generate project manifest (quick, runs synchronously)
 uv run "${SCRIPT_DIR}/scan.py" "${PROJECT_ROOT}" >/dev/null 2>&1 || true
 
