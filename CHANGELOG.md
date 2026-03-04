@@ -5,6 +5,13 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-03-04
+
+### Added
+- **Context injection tracking** - All hooks wrapped by `hook-runner.sh` which logs output sizes to `~/.claude/logs/context-injection.tsv`
+- **Collation script** - `uv run scripts/collate-injections.py` summarizes injection sizes by hook, session, and project
+- Supports `--detail`, `--by-session`, `--since 24h`, and `--tail N` options
+
 ## [0.14.6] - 2026-03-02
 
 ### Added

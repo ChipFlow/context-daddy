@@ -113,6 +113,27 @@ The git post-commit hook is auto-installed on session start via `scripts/install
 
 **Important**: Uses `CLAUDECODE=""` to bypass nested-session detection since it runs as a separate process.
 
+## Context Injection Tracking
+
+All context-injecting hooks are wrapped by `scripts/hook-runner.sh`, which logs output sizes to `~/.claude/logs/context-injection.tsv`.
+
+```bash
+# Summary by hook (which hooks inject the most?)
+uv run scripts/collate-injections.py
+
+# Per-event detail
+uv run scripts/collate-injections.py --detail
+
+# Group by session
+uv run scripts/collate-injections.py --by-session
+
+# Last 24 hours
+uv run scripts/collate-injections.py --since 24h
+
+# Last 20 events
+uv run scripts/collate-injections.py --detail --tail 20
+```
+
 ## CI
 
 - Main CI validates structure and tests scripts
