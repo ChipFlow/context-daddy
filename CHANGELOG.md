@@ -5,6 +5,11 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.4] - 2026-03-04
+
+### Fixed
+- **Stronger auto-continue after step completion** - When `goal_update_step` marks a step done, the hook now injects the full next-step context via `additionalContext` (not just a soft `systemMessage` nudge), with an explicit "ACTION REQUIRED: Continue immediately" directive
+
 ## [0.15.3] - 2026-03-04
 
 ### Added
