@@ -122,6 +122,15 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hook-runner.sh nudge-mcp ${CLAUDE_PLUGIN_ROOT}/hooks/nudge-mcp.sh"
           }
         ]
+      },
+      {
+        "matcher": "EnterPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hook-runner.sh plan-intercept ${CLAUDE_PLUGIN_ROOT}/hooks/plan-intercept.sh"
+          }
+        ]
       }
     ],
     "SubagentStart": [
