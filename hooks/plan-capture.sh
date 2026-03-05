@@ -60,17 +60,19 @@ fi
 # Get current goal info for the message
 GOAL_STATUS=$(bash "${SCRIPT_DIR}/goal-context-helper.sh" --status "${PROJECT_ROOT}" 2>/dev/null || true)
 
-# Build the nudge message
-MSG="📋 Plan approved with steps that should be tracked in your active goal.
+# Build the continuation directive
+MSG="📋 Plan approved. Now execute it.
 
 Plan steps detected:
 ${STEPS}
 
-**ACTION**: Use goal_add_step to add these as goal steps (skip any that duplicate existing steps). Use short kebab-case step IDs derived from the titles."
+**ACTION REQUIRED**:
+1. If these steps are not already in the active goal, use goal_add_step to add them (short kebab-case step IDs)
+2. **Start implementing the plan NOW.** Do not stop to ask the user — the plan has been approved. Begin with step 1."
 
-MSG_ESCAPED=$(echo -n "${MSG}" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | sed 's/^"//;s/"$//')
+MSG_ESCAPED=$(echo -e "${MSG}" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | sed 's/^"//;s/"$//')
 cat << EOF
 {
-  "systemMessage": "${MSG_ESCAPED}"
+  "additionalContext": "${MSG_ESCAPED}"
 }
 EOF
