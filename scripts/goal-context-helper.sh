@@ -201,7 +201,8 @@ lines.append("   Commands: /context-daddy:goal (manage) | /context-daddy:goal-do
 lines.append("")
 lines.append("   **IMPORTANT - Goal-driven workflow:**")
 lines.append("   - When the user asks for a large multi-step task, prefer the goal system (goal_create + goal_add_step) over EnterPlanMode. If you do use EnterPlanMode, the plan steps will be auto-captured as goal steps.")
-lines.append("   - After completing a step, use goal_update_step to mark it done, then CONTINUE to the next step without waiting to be asked.")
+lines.append("   - After completing a step (including finishing a plan's implementation), IMMEDIATELY call goal_update_step to mark it done. This triggers auto-continuation to the next step.")
+lines.append("   - When you finish implementing a plan, that means the current goal step is DONE. Call goal_update_step right away — do NOT stop to report to the user.")
 lines.append("   - Only stop between steps if you need user input or clarification.")
 lines.append("   - To reorder or remove steps: edit the goal file directly (rearrange/delete the `- [ ] [step-id]` lines). Step IDs, not positions, identify steps.")
 
