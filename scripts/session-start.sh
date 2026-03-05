@@ -221,7 +221,10 @@ if [[ "${HAS_NARRATIVE}" != "True" ]]; then
     LOCKFILE="${CLAUDE_DIR}/.update-context.lock"
     if [[ ! -f "${LOCKFILE}" ]] && [[ -f "${SCRIPT_DIR}/update-context.sh" ]]; then
         echo $$ > "${LOCKFILE}"
-        bash "${SCRIPT_DIR}/update-context.sh" --background --create 2>/dev/null &
+        # Fully detach to prevent Claude Code from waiting for descendant processes
+        nohup bash "${SCRIPT_DIR}/update-context.sh" --background --create \
+            </dev/null >/dev/null 2>/dev/null &
+        disown 2>/dev/null || true
         STATUS_MSG="${STATUS_MSG} | Generating narrative in background..."
     fi
 fi

@@ -569,6 +569,52 @@ async def list_tools() -> list[Tool]:
                 "required": ["file_path"]
             }
         ),
+        Tool(
+            name="save_session_context",
+            description="Save session insights to narrative.md and learnings.md before context compaction. Call this when instructed during PreCompact.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "current_foci": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "What was worked on this session (replaces existing foci)"
+                    },
+                    "learnings": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {"type": "string"},
+                                "insight": {"type": "string"},
+                                "context": {"type": "string"}
+                            },
+                            "required": ["title", "insight"]
+                        },
+                        "description": "New discoveries, debugging insights, API quirks"
+                    },
+                    "dragons": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Non-obvious gotchas or fragile areas discovered"
+                    },
+                    "narrative_updates": {
+                        "type": "string",
+                        "description": "Free-form additions to 'The Story So Far' section"
+                    },
+                    "open_questions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "New uncertainties or technical debt discovered"
+                    },
+                    "resolved_questions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Questions from the narrative that were answered this session"
+                    }
+                }
+            }
+        ),
     ]
 
 
@@ -593,6 +639,45 @@ async def wait_for_indexing(timeout_seconds: int = 60) -> tuple[bool, str]:
     return False, "timeout waiting for indexing"
 
 
+def _check_update_trigger():
+    """If trigger file exists, spawn background update-context.sh owned by this process.
+
+    This replaces the previous approach of spawning from hooks (which caused
+    orphan process issues). The MCP server owns the child process lifecycle.
+    """
+    trigger = get_claude_dir() / ".update-narrative-trigger"
+    if not trigger.exists():
+        return
+    trigger.unlink(missing_ok=True)
+
+    # Check if an update is already running
+    lockfile = get_claude_dir() / ".update-context.lock"
+    if lockfile.exists():
+        try:
+            age = time.time() - lockfile.stat().st_mtime
+            if age < 300:  # 5 minutes
+                logger.info("update-context already running (lock age %.0fs), skipping", age)
+                return
+        except OSError:
+            pass
+
+    # Spawn background update owned by MCP server (not hook process group)
+    script = SCRIPT_DIR / "update-context.sh"
+    if script.exists():
+        logger.info("Spawning background update-context.sh from trigger")
+        try:
+            subprocess.Popen(
+                ["bash", str(script), "--background", "--update"],
+                cwd=str(get_project_root()),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,  # Full detach from MCP server
+            )
+        except Exception as e:
+            logger.warning(f"Failed to spawn update-context.sh: {e}")
+
+
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """Handle tool calls."""
@@ -608,7 +693,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     # Auto-wait for indexing if needed (reduced timeout for better UX)
     # Markdown tools don't need indexing
     if name not in ["repo_map_status", "reindex_repo_map", "wait_for_index",
-                     "md_outline", "md_get_section", "md_list_tables", "md_get_table", "md_list_figures"]:
+                     "md_outline", "md_get_section", "md_list_tables", "md_get_table", "md_list_figures",
+                     "save_session_context"]:
         try:
             if db_path.exists():
                 conn = sqlite3.connect(db_path, timeout=5.0)
@@ -684,6 +770,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             )
         elif name == "md_list_figures":
             result = md_list_figures(file_path=arguments["file_path"])
+        elif name == "save_session_context":
+            import context_saver
+            result = context_saver.save_session_context(
+                project_root=str(get_project_root()),
+                **arguments
+            )
+            # Check for pending git-based update trigger
+            _check_update_trigger()
         else:
             result = {"error": f"Unknown tool: {name}"}
             logger.error(f"Unknown tool: {name}")

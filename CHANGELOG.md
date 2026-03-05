@@ -5,6 +5,17 @@ All notable changes to the context-tools plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-03-05
+
+### Added
+- **`save_session_context` MCP tool** - Claude can now save session insights (foci, learnings, dragons, narrative updates, open/resolved questions) directly to narrative.md and learnings.md before context compaction
+- **Direct context preservation** - PreCompact hook now instructs Claude to call `save_session_context` instead of spawning a background `claude -p` process, eliminating orphan process issues and 30-90s latency
+- **Concurrent write safety** - Lockfile with PID-based stale detection prevents corruption when multiple sessions write to the same narrative/learnings files
+- **Git-based update trigger** - After saving, drops `.update-narrative-trigger` file; MCP server picks it up on next tool call and spawns `update-context.sh` in background (owned by MCP server, not hook process group)
+
+### Changed
+- PreCompact hook no longer spawns `update-context.sh` directly — context saving is immediate via MCP tool
+
 ## [0.15.6] - 2026-03-05
 
 ### Fixed
