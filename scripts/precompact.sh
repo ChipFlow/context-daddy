@@ -31,6 +31,7 @@ Extract from your conversation history:
 - **narrative_updates**: Brief summary of what happened this session for "The Story So Far"
 - **open_questions**: New uncertainties (if any)
 - **resolved_questions**: Previously-open questions you answered (if any)
+- **tools_update**: If you created any new scripts or dev tools this session, update .claude/TOOLS.md with them before compaction.
 
 This information will be lost after compaction. Save it now.'
 

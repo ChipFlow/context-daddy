@@ -63,6 +63,12 @@ fi
 # Generate project manifest (quick, runs synchronously)
 uv run "${SCRIPT_DIR}/scan.py" "${PROJECT_ROOT}" >/dev/null 2>&1 || true
 
+# Discover dev tools if TOOLS.md doesn't exist
+TOOLS_MD="${CLAUDE_DIR}/TOOLS.md"
+if [[ ! -f "${TOOLS_MD}" ]]; then
+    uv run "${SCRIPT_DIR}/discover-tools.py" "${PROJECT_ROOT}" >/dev/null 2>&1 || true
+fi
+
 # Install git hooks (idempotent, silent)
 bash "${SCRIPT_DIR}/install-git-hooks.sh" "${PROJECT_ROOT}" 2>/dev/null || true
 
@@ -253,6 +259,13 @@ if [[ -f "${LEARNINGS}" ]]; then
     if [[ "${LEARNING_COUNT}" -gt 0 ]]; then
         CONTEXT="${CONTEXT}\n${LEARNING_COUNT} project learning(s) in .claude/learnings.md"
     fi
+fi
+
+# Inject TOOLS.md if it exists
+if [[ -f "${TOOLS_MD}" ]]; then
+    TOOLS_CONTENT=$(cat "${TOOLS_MD}")
+    CONTEXT="${CONTEXT}\n\n${TOOLS_CONTENT}"
+    CONTEXT="${CONTEXT}\n\n**IMPORTANT**: If you create new scripts, dev tools, or useful commands during this session, update .claude/TOOLS.md to include them."
 fi
 
 # Goal context injection (project-scoped, reads goal files directly)

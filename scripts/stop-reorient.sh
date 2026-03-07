@@ -79,6 +79,18 @@ ${NARRATIVE_DRAGONS}"
     fi
 fi
 
+# Inject TOOLS.md if it exists
+TOOLS_MD="${CLAUDE_DIR}/TOOLS.md"
+if [[ -f "${TOOLS_MD}" ]]; then
+    TOOLS_CONTENT=$(cat "${TOOLS_MD}")
+    INSTRUCTIONS="${INSTRUCTIONS}
+
+🔧 **Available Dev Tools**:
+${TOOLS_CONTENT}
+
+**If you created new tools this session, update .claude/TOOLS.md.**"
+fi
+
 # Inject active goal context (project-scoped)
 GOAL_CONTEXT=$(bash "${SCRIPT_DIR}/goal-context-helper.sh" "${PROJECT_ROOT}" 2>/dev/null || true)
 if [[ -n "${GOAL_CONTEXT}" ]]; then
