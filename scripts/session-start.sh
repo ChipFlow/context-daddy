@@ -82,7 +82,16 @@ MCP_PERMS_MISSING=$(python3 -c "
 import json
 from pathlib import Path
 settings_path = Path.home() / '.claude' / 'settings.json'
-patterns = ['mcp__plugin_context-daddy_repo-map__*', 'mcp__plugin_context-daddy_goals__*']
+patterns = [
+        'mcp__plugin_context-daddy_repo-map__*',
+        'mcp__plugin_context-daddy_goals__*',
+        'Edit(.claude/TOOLS.md)',
+        'Write(.claude/TOOLS.md)',
+        'Edit(.claude/learnings.md)',
+        'Write(.claude/learnings.md)',
+        'Edit(.claude/narrative.md)',
+        'Write(.claude/narrative.md)',
+    ]
 try:
     settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
     allow = settings.setdefault('permissions', {}).setdefault('allow', [])
