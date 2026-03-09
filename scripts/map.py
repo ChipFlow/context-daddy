@@ -286,7 +286,7 @@ def get_first_line_of_docstring(docstring: str | None) -> str | None:
 
 
 def extract_symbols_from_python(file_path: Path, relative_to: Path) -> list[Symbol]:
-    """Extract all functions and classes from a Python file."""
+    """Extract all functions, classes, and nested functions from a Python file."""
     symbols = []
 
     try:
@@ -297,7 +297,25 @@ def extract_symbols_from_python(file_path: Path, relative_to: Path) -> list[Symb
 
     rel_path = str(file_path.relative_to(relative_to))
 
-    for node in ast.walk(tree):
+    def _extract_functions(node_body: list, parent_name: str | None, parent_kind: str | None):
+        """Recursively extract functions/methods from a node body."""
+        for item in node_body:
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                kind = "method" if parent_kind == "class" else "function"
+                symbols.append(Symbol(
+                    name=item.name,
+                    kind=kind,
+                    signature=get_function_signature(item),
+                    docstring=get_first_line_of_docstring(ast.get_docstring(item)),
+                    file_path=rel_path,
+                    line_number=item.lineno,
+                    end_line_number=item.end_lineno,
+                    parent=parent_name,
+                ))
+                # Recurse into nested functions
+                _extract_functions(item.body, item.name, "function")
+
+    for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.ClassDef):
             symbols.append(Symbol(
                 name=node.name,
@@ -308,21 +326,8 @@ def extract_symbols_from_python(file_path: Path, relative_to: Path) -> list[Symb
                 line_number=node.lineno,
                 end_line_number=node.end_lineno,
             ))
-            for item in node.body:
-                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    symbols.append(Symbol(
-                        name=item.name,
-                        kind="method",
-                        signature=get_function_signature(item),
-                        docstring=get_first_line_of_docstring(ast.get_docstring(item)),
-                        file_path=rel_path,
-                        line_number=item.lineno,
-                        end_line_number=item.end_lineno,
-                        parent=node.name,
-                    ))
-
-    for node in ast.iter_child_nodes(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            _extract_functions(node.body, node.name, "class")
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             symbols.append(Symbol(
                 name=node.name,
                 kind="function",
@@ -332,6 +337,8 @@ def extract_symbols_from_python(file_path: Path, relative_to: Path) -> list[Symb
                 line_number=node.lineno,
                 end_line_number=node.end_lineno,
             ))
+            # Recurse into nested functions
+            _extract_functions(node.body, node.name, "function")
 
     return symbols
 
