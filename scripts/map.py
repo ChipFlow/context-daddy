@@ -10,7 +10,7 @@
 """
 Generate a repo map showing functions, classes, and their documentation.
 Helps Claude Code understand what already exists before implementing new features.
-Supports Python, C++, and Rust.
+Supports Python, C++, Objective-C++, Metal, and Rust.
 
 Usage:
     uv run map.py [directory]
@@ -37,7 +37,7 @@ from tree_sitter import Language, Parser, Node
 
 
 # Cache format version - bump when Symbol structure or file selection changes
-CACHE_VERSION = 5  # v5: Added FTS5 table for text search
+CACHE_VERSION = 6  # v6: Added .mm (Objective-C++) and .metal file support
 
 # Database schema version - bump when SQLite schema changes
 DB_VERSION = 1  # v1: Initial versioned schema
@@ -638,7 +638,7 @@ def get_language(file_path: str) -> str:
         return "python"
     elif ext == ".rs":
         return "rust"
-    elif ext in (".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx"):
+    elif ext in (".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx", ".mm", ".metal"):
         return "cpp"
     return "unknown"
 
@@ -963,8 +963,8 @@ def find_python_files(root: Path) -> list[Path]:
 
 
 def find_cpp_files(root: Path) -> list[Path]:
-    """Find all C++ files."""
-    return find_files(root, {".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx"})
+    """Find all C/C++/Objective-C++/Metal files."""
+    return find_files(root, {".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx", ".mm", ".metal"})
 
 
 def find_rust_files(root: Path) -> list[Path]:
@@ -1199,6 +1199,16 @@ def main():
         }
         progress_path.write_text(json.dumps(progress_data))
 
+        # Clean up PID file if we're the process that wrote it
+        pid_file = claude_dir / ".indexing-pid"
+        if pid_file.exists():
+            try:
+                stored_pid = int(pid_file.read_text().strip())
+                if stored_pid == os.getpid():
+                    pid_file.unlink()
+            except (ValueError, OSError):
+                pass
+
         print(repo_map)
         print("\n---")
         print(f"Repo map saved to: {claude_dir / 'repo-map.md'}")
@@ -1208,7 +1218,7 @@ def main():
         if python_files:
             file_counts.append(f"{len(python_files)} Python")
         if cpp_files:
-            file_counts.append(f"{len(cpp_files)} C++")
+            file_counts.append(f"{len(cpp_files)} C/C++/ObjC++/Metal")
         if rust_files:
             file_counts.append(f"{len(rust_files)} Rust")
         print(f"Files: {total_files} ({', '.join(file_counts)})")

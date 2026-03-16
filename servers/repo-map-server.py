@@ -295,7 +295,7 @@ def is_stale(full_check: bool = False) -> tuple[bool, str]:
         # Full filesystem walk — expensive on large repos but detects new/deleted files
         cached_count = cache_data.get("found_file_count", len(cache_data.get("files", {})))
         current_files = []
-        for ext in [".py", ".rs", ".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx"]:
+        for ext in [".py", ".rs", ".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx", ".mm", ".metal"]:
             current_files.extend(indexer.find_files(project_root, {ext}))
         current_count = len(current_files)
 
@@ -326,6 +326,33 @@ def is_stale(full_check: bool = False) -> tuple[bool, str]:
     return False, "up to date"
 
 
+def _kill_external_indexer():
+    """Kill any externally-started indexing process (e.g. from session-start.sh).
+
+    session-start.sh may spawn map.py at low CPU priority as a cache warmer.
+    We kill it so the MCP server can run its own indexer at normal priority,
+    picking up cached parse results from the killed process.
+    """
+    pid_file = get_claude_dir() / ".indexing-pid"
+    if not pid_file.exists():
+        return
+    try:
+        ext_pid = int(pid_file.read_text().strip())
+        os.kill(ext_pid, signal.SIGTERM)
+        logger.info(f"Killed external indexing process (PID: {ext_pid})")
+        # Brief wait for clean shutdown
+        for _ in range(10):
+            try:
+                os.kill(ext_pid, 0)  # Check if still alive
+                time.sleep(0.1)
+            except ProcessLookupError:
+                break
+    except (ValueError, ProcessLookupError, PermissionError):
+        pass
+    finally:
+        pid_file.unlink(missing_ok=True)
+
+
 def do_index() -> tuple[bool, str]:
     """
     Spawn subprocess to perform indexing.
@@ -342,6 +369,9 @@ def do_index() -> tuple[bool, str]:
         project_root = get_project_root()
         claude_dir = get_claude_dir()
         logger.info(f"Starting index subprocess for {project_root}")
+
+        # Kill any externally-started low-priority indexer (e.g. from session-start.sh)
+        _kill_external_indexer()
 
         # Ensure .claude directory exists
         claude_dir.mkdir(exist_ok=True)
